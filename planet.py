@@ -1,41 +1,68 @@
 import pygame
 import math as m
+import numpy as np
 BLUE = (0,96,255)
 
 class Planet(pygame.sprite.Sprite):
-    def __init__(self, win, group):
+    def __init__(self, win_settings, group):
         super().__init__(group)
+        self.radius = 6378.1363
+
+        # Scale Image from the real radius to game 
+        self.win_scale = win_settings[2] / self.radius
+
+        # Load and scale the planet image
         self.image = pygame.image.load('graphics/earth.png').convert_alpha()
-        self.rect = self.image.get_rect(center = win)
-        self.center = win
-        self.G = 6.673E-20       # gravitational coefficient [km^3/kg*s^2]
-        self.m = 5.973320E24     # mass [kg]
-        self.u = self.G * self.m # gravitational parameter [km^3/s^2]
+        self.image = pygame.transform.scale(self.image, (self.image.get_width() // self.win_scale, self.image.get_height() // self.win_scale))
+
+        # Rotate the planet image
+        self.angle = 0
+        self.display_image = pygame.transform.rotate(self.image, 0.0)
+
+        # Set the center of the planet image
+        self.x_centered = win_settings[0] // 2 # Where to put sprite center in the screen
+        self.y_centered = win_settings[1] // 2 # Where to put sprite center in the screen
+
+        # Calculate the top-left corner coordinates to center the image
+        self.x_centered_transform = self.x_centered - self.image.get_width() // 2
+        self.y_centered_transform = self.y_centered - self.image.get_height() // 2
+        self.rect = self.display_image.get_rect(center=(self.x_centered, self.y_centered))
+
+        # Planet Info
+        self.x = 0                 # position on x-axis [km]
+        self.y = 0                 # position on y-axis [km]
+        self.G = 6.673E-20         # gravitational coefficient [km^3/kg*s^2]
+        self.m = 5.973320E24       # mass [kg]
+        self.mu = self.G * self.m   # gravitational parameter [km^3/s^2]
+        self.rot_vel = 7.292115E-5 # rotational velocity [rad/s]
 
     def update(self):
         pass
 
-    def gravity_two_body(self, object):
-        distance = m.sqrt((object.x - self.center[0])**2 + (object.y - self.center[1])**2)
-        force = self.u * self.m / (distance**2)
-        theta = m.atan2(object.y - self.center[1], object.x - self.center[0])
-        force_x = -m.cos(theta) * force
-        force_y = -m.sin(theta) * force
-        print(force_x)
+    def update_image(self, MET_TIME):
+        self.angle = self.rot_vel * MET_TIME
+        self.display_image = pygame.transform.rotate(self.image, np.degrees(self.angle))
+        self.rect = self.display_image.get_rect(center=(self.x_centered, self.y_centered))
+        return
+    
+    def propagate_body(self, t, state, dt, f, timespan):
+        traj = []
+        while t < timespan:
+            state = self.rk4(t, state, dt, f)
+            t += dt
+            traj.append([state[0], state[1], state[2]])
+        return traj
 
-        return force_x, force_y
 
-    def f(t, state):
-        r1, r2, v1, v2 = state.reshape((4, 2))
-        r = r2 - r1
-        r_norm = np.linalg.norm(r)
-        dv1dt = G * m2 * (r / r_norm**3)
-        dv2dt = -G * m1 * (r / r_norm**3)
-        dr1dt = v1
-        dr2dt = v2
-        return np.array([dr1dt, dr2dt, dv1dt, dv2dt]).flatten()
+    def two_body_ode(self, t, state):
+        state = np.array(state)
+        r = state[:3] - [self.x, self.y, 0]
+        a = -self.mu * r / np.linalg.norm(r) ** 3
+        return np.array([state[3], state[4], state[5], 
+                        a[0], a[1], a[2]])
 
-    def rk4(t, state, dt, f):
+    def rk4(self, t, state, dt, f):
+    # RK4 Numerical Methods 
         k1 = f(t, state)
         k2 = f(t + dt/2, state + dt/2 * k1)
         k3 = f(t + dt/2, state + dt/2 * k2)
