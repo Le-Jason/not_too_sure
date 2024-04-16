@@ -61,6 +61,9 @@ class Rocket(pygame.sprite.Sprite):
         for line in self.orbit_parameters_text:
             self.font_surface = self.font.render(line, False, 'Blue')
     
+    def rocket_customize(self):
+        pass
+
     def rocket_rotate(self, motion):
         if motion:
             self.angle -= 1
@@ -75,7 +78,6 @@ class Rocket(pygame.sprite.Sprite):
     def rocket_fire(self):
         flight_path_angle = (np.degrees(m.atan2(self.vy, self.vx) ) % 360)
         flight_path_angle = self.angle % 360
-        print(flight_path_angle)
         deltaV = 0.1
         if flight_path_angle >= 0 and flight_path_angle <= 90:
             vx = m.cos(m.radians(flight_path_angle))

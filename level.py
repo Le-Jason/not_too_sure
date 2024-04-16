@@ -2,6 +2,7 @@ from planet import *
 from camera import *
 from rocket import *
 from level import *
+from ui_button import *
 import pygame
 from sys import exit
 
@@ -98,8 +99,57 @@ class Level:
 
         self.MET_TIME += self.TIME_STEP
 
+class VAB:
+    def __init__(self, display, gameStateManager):
+        self.display = display
+        self.gameStateManager = gameStateManager
+        self.display_surface = pygame.display.get_surface()
 
+        pygame.display.set_caption('VAB')
+        self.sky = pygame.image.load('graphics/spites/sky.png').convert_alpha()
+        self.sky_rec = self.sky.get_rect(topleft=(0, 0))
 
+        self.vab_pic = pygame.image.load('graphics/spites/launch_pad.png').convert_alpha()
+        self.vab_pic_rec = self.vab_pic.get_rect(topleft=(0, 0))
+
+        self.ui = pygame.image.load('graphics/spites/vab_ui.png').convert_alpha()
+        self.ui_rec = self.ui.get_rect(topleft=(0, 0))
+
+        self.current_menu = 'NA'
+
+        self.buttons = [
+            vab_ui_button('Command Pod', (0, 55), (55, 42)),
+            vab_ui_button('Fuel Tank',(0, 55 + 48), (55, 42)),
+            vab_ui_button('Rocket Engine',(0, 55 + (2*48) + 1), (55, 42)),
+            vab_ui_button('Controls',(0, 55 + (3*48) + 2), (55, 42)),
+            vab_ui_button('Structures',(0, 55 + (4*48) + 3), (55, 42)),
+            vab_ui_button('Aero-Structures',(0, 55 + (5*48) + 4), (55, 42)),
+            vab_ui_button('Miscellaneous',(0, 55 + (6*48) + 5), (55, 42)),
+            vab_ui_button('Payload',(0, 55 + (7*48) + 6), (55, 42)),
+
+            vab_ui_button('ui1',(294, 0), (43, 63)),
+            vab_ui_button('ui2',(294 + (49), 0), (43, 63)),
+            vab_ui_button('Astronaut',(294 + (2*49), 0), (43, 63)),
+            vab_ui_button('Flag',(843, 0), (43, 63)),
+            vab_ui_button('New',(1002, 0), (43, 63)),
+            vab_ui_button('Folder',(1002 + (49), 0), (43, 63)),
+            vab_ui_button('Save',(1002 + (2*49), 0), (43, 63)),
+            vab_ui_button('Launch',(1169, 0), (43, 63)),
+            vab_ui_button('Leave',(1169 + 61, 0), (43, 63)),
+        ]
+
+    def run(self):
+        self.display_surface.blit(self.sky, self.sky_rec)
+        self.display_surface.blit(self.vab_pic, self.vab_pic_rec)
+
+        for button in self.buttons:
+            self.display_surface.blit(button.rec, button.rec_rect)
+
+        mouse_pos = pygame.mouse.get_pos()
+        for button in self.buttons:
+            self.current_menu = button.click(mouse_pos, self.display_surface, self.current_menu)
+
+        self.display_surface.blit(self.ui, self.ui_rec)
 
 
 class Start:
@@ -137,7 +187,7 @@ class Start:
         mouse_pos = pygame.mouse.get_pos()
         if self.text_rect.collidepoint(mouse_pos):
             if (pygame.mouse.get_pressed()[0]):
-                self.gameStateManager.set_state('level')
+                self.gameStateManager.set_state('VAB')
         if self.text_rect_2.collidepoint(mouse_pos):
             print(pygame.mouse.get_pressed()[0])
 
