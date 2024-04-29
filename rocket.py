@@ -4,8 +4,18 @@ import numpy as np
 
 from Algorithms.KeplerProblems import *
 
+class goundRocket():
+    def __init__(self, parts, vab_pic, vab_pic_rec):
+        self.parts = parts
+        # TODO: Get the transparent part to make the rocket init on the launch pad
+        for part in parts:
+            pass
+
+    def update(self, display_screen):
+        self.parts.draw(display_screen)
+
 class Rocket(pygame.sprite.Sprite):
-    def __init__(self, pos, vel, win_settings, group):
+    def __init__(self, pos, vel, win_settings, group, image=None, rect=None):
         super().__init__(group)
 
         self.const_win_x = win_settings[0] // 2

@@ -6,6 +6,43 @@ from ui_button import *
 import pygame
 from sys import exit
 
+class goundLevel:
+    def __init__(self, display, gameStateManager, display_surface, WIDTH, HEIGHT, max_width, max_height, MET_TIME, TIME_STEP, start_time,
+                VAB_object):
+        self.display = display
+        self.gameStateManager = gameStateManager
+        self.display_surface = display_surface
+
+        pygame.display.set_caption('Gound Level')
+        self.sky = pygame.image.load('graphics/spites/sky.png').convert_alpha()
+        self.sky_rec = self.sky.get_rect(topleft=(0, 0))
+
+        self.vab_pic = pygame.image.load('graphics/spites/launch_pad.png').convert_alpha()
+        self.vab_pic_rec = self.vab_pic.get_rect(topleft=(0, 0))
+
+        self.WIDTH = WIDTH
+        self.HEIGHT = HEIGHT
+        self.max_width = max_width
+        self.max_height = max_height
+        self.MET_TIME = MET_TIME
+        self.TIME_STEP = TIME_STEP
+        self.start_time = start_time
+
+        self.VAB_object = VAB_object
+
+        self.init = False
+
+
+    def run(self):
+        if self.init == False:
+            self.init = True
+            self.rocket = goundRocket(self.VAB_object.final_object, self.vab_pic, self.vab_pic_rec)
+
+        if self.init == True:
+            self.display_surface.blit(self.sky, self.sky_rec)
+            self.display_surface.blit(self.vab_pic, self.vab_pic_rec)
+            self.rocket.update(self.display_surface)
+
 class Level:
     def __init__(self, display, gameStateManager, screen, WIDTH, HEIGHT, max_width, max_height, MET_TIME, TIME_STEP, start_time):
         self.display = display
@@ -105,6 +142,8 @@ class VAB:
         self.gameStateManager = gameStateManager
         self.display_surface = pygame.display.get_surface()
 
+        self.final_object = None
+
         pygame.display.set_caption('VAB')
         self.sky = pygame.image.load('graphics/spites/sky.png').convert_alpha()
         self.sky_rec = self.sky.get_rect(topleft=(0, 0))
@@ -116,38 +155,37 @@ class VAB:
         self.ui_rec = self.ui.get_rect(topleft=(0, 0))
 
         self.current_menu = 'NA'
-
-        self.buttons = [
-            vab_ui_button('Command Pod', (0, 55), (55, 42)),
-            vab_ui_button('Fuel Tank',(0, 55 + 48), (55, 42)),
-            vab_ui_button('Rocket Engine',(0, 55 + (2*48) + 1), (55, 42)),
-            vab_ui_button('Controls',(0, 55 + (3*48) + 2), (55, 42)),
-            vab_ui_button('Structures',(0, 55 + (4*48) + 3), (55, 42)),
-            vab_ui_button('Aero-Structures',(0, 55 + (5*48) + 4), (55, 42)),
-            vab_ui_button('Miscellaneous',(0, 55 + (6*48) + 5), (55, 42)),
-            vab_ui_button('Payload',(0, 55 + (7*48) + 6), (55, 42)),
-
-            vab_ui_button('ui1',(294, 0), (43, 63)),
-            vab_ui_button('ui2',(294 + (49), 0), (43, 63)),
-            vab_ui_button('Astronaut',(294 + (2*49), 0), (43, 63)),
-            vab_ui_button('Flag',(843, 0), (43, 63)),
-            vab_ui_button('New',(1002, 0), (43, 63)),
-            vab_ui_button('Folder',(1002 + (49), 0), (43, 63)),
-            vab_ui_button('Save',(1002 + (2*49), 0), (43, 63)),
-            vab_ui_button('Launch',(1169, 0), (43, 63)),
-            vab_ui_button('Leave',(1169 + 61, 0), (43, 63)),
-        ]
+        self.buttons = vab_ui_button()
+        self.buttons.add('Command Pod', (0, 55), (55, 42))
+        self.buttons.add('Fuel Tank',(0, 55 + 48), (55, 42))
+        self.buttons.add('Rocket Engine',(0, 55 + (2*48) + 1), (55, 42))
+        self.buttons.add('Controls',(0, 55 + (3*48) + 2), (55, 42))
+        self.buttons.add('Structures',(0, 55 + (4*48) + 3), (55, 42))
+        self.buttons.add('Aero-Structures',(0, 55 + (5*48) + 4), (55, 42))
+        self.buttons.add('Miscellaneous',(0, 55 + (6*48) + 5), (55, 42))
+        self.buttons.add('Payload',(0, 55 + (7*48) + 6), (55, 42))
+        self.buttons.add('ui1',(294, 0), (43, 63))
+        self.buttons.add('ui2',(294 + (49), 0), (43, 63))
+        self.buttons.add('Astronaut',(294 + (2*49), 0), (43, 63))
+        self.buttons.add('Flag',(843, 0), (43, 63))
+        self.buttons.add('New',(1002, 0), (43, 63))
+        self.buttons.add('Folder',(1002 + (49), 0), (43, 63))
+        self.buttons.add('Save',(1002 + (2*49), 0), (43, 63))
+        self.buttons.add('Launch',(1169, 0), (43, 63))
+        self.buttons.add('Leave',(1169 + 61, 0), (43, 63))
 
     def run(self):
         self.display_surface.blit(self.sky, self.sky_rec)
         self.display_surface.blit(self.vab_pic, self.vab_pic_rec)
 
-        for button in self.buttons:
-            self.display_surface.blit(button.rec, button.rec_rect)
+        self.buttons.draw(self.display_surface)
 
         mouse_pos = pygame.mouse.get_pos()
-        for button in self.buttons:
-            self.current_menu = button.click(mouse_pos, self.display_surface, self.current_menu)
+        self.current_menu, rocket_launch = self.buttons.click(mouse_pos, self.display_surface, self.current_menu)
+
+        if self.current_menu == 'Launch':
+            self.final_object = rocket_launch
+            self.gameStateManager.set_state('groundLevel')
 
         self.display_surface.blit(self.ui, self.ui_rec)
 

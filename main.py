@@ -26,11 +26,18 @@ class SoftwareRender:
 
         self.gameStateManager = GameStateManager('VAB')
         self.start = Start(self.screen, self.gameStateManager)
+        self.VAB = VAB(self.screen, self.gameStateManager)
         self.level = Level(self.screen, self.gameStateManager, self.screen, self.WIDTH, self.HEIGHT, self.max_width, self.max_height,
                         self.MET_TIME, self.TIME_STEP, self.start_time)
-        self.VAB = VAB(self.screen, self.gameStateManager)
+        self.groundLevel = goundLevel(self.screen, self.gameStateManager, self.screen, self.WIDTH, self.HEIGHT, self.max_width, self.max_height,
+                        self.MET_TIME, self.TIME_STEP, self.start_time, self.VAB)
         
-        self.states = {'start': self.start, 'level': self.level, 'VAB': self.VAB}
+        self.states = {
+            'start': self.start,
+            'level': self.level,
+            'VAB': self.VAB,
+            'groundLevel': self.groundLevel
+        }
 
     def draw(self, planet):
         self.screen.fill(pygame.Color('darkslategrey'))
