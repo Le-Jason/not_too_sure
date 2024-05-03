@@ -6,13 +6,107 @@ from Algorithms.KeplerProblems import *
 
 class goundRocket():
     def __init__(self, parts, vab_pic, vab_pic_rec):
-        self.parts = parts
-        # TODO: Get the transparent part to make the rocket init on the launch pad
+        # TODO: fix the parachute displacement
+        
+        body_bottom = 0
+        body_top = 0
+        body_right = 0
+        body_left = 0
+        init = False
+        idx = 0
+        launch_pad = self.get_visible_rect(vab_pic)
+        launch_pad_x = vab_pic_rec[2]/2
+        launch_pad_y = launch_pad[1]
         for part in parts:
-            pass
+            if init == False:
+                body_bottom = part.rect.bottom
+                body_top = part.rect.top
+                body_right = part.rect.right
+                body_left = part.rect.left
+                init = True
+            else:
+                if part.rect.bottom > body_bottom:
+                    body_bottom = part.rect.bottom
+                if part.rect.top < body_top:
+                    idx += 1
+                    body_top = part.rect.top
+                if part.rect.right > body_right:
+                    body_right = part.rect.right
+                if part.rect.left < body_left:
+                    body_left = part.rect.left
+        
+        for i, part in enumerate(parts):
+            if i == idx:
+                self.struct_image = pygame.Surface((abs(body_right - body_left) , abs(body_top - body_bottom)))
+                self.struct_image.fill((255 , 0 , 0))
+                self.struct_rect = self.struct_image.get_rect()
+                self.struct_rect.topleft = (part.rect.topleft[0], part.rect.topleft[1])
+
+        for part in parts:
+            self.init_relative(part)
+
+        self.struct_rect.topleft = (launch_pad_x - ((body_right - body_left)/2), launch_pad_y - abs(body_top - body_bottom))
+        self.parts = parts
+        self.display_parts = parts
+        self.angle = 0
+        self.rotating = False
+
+    def rocket_rotate(self, motion):
+        self.rotating = True
+        if motion:
+            self.angle += 1
+        else:
+            self.angle -= 1
+        for part in self.parts:
+            part.display_image = pygame.transform.rotate(part.image, self.angle)
+
+    def rocket_fire(self):
+        center = self.struct_rect.center
+        thrust = [0, -1]
+        flight_path_angle = m.radians(self.angle % 360)
+        dx = -1*(thrust[0] * m.cos(flight_path_angle) - thrust[1] * m.sin(flight_path_angle))
+        dy = thrust[0] * m.sin(flight_path_angle) + thrust[1] * m.cos(flight_path_angle)
+        self.struct_rect.center = (center[0] + dx*2, center[1] + dy*2)
+
+    def init_relative(self, part):
+        top_left = part.rect.topleft
+        struct_top_left = self.struct_rect.topleft
+        rel_x = top_left[0] - struct_top_left[0]
+        rel_y = top_left[1] - struct_top_left[1]
+        part.relative_struct = (rel_x, rel_y)
+
+    def update_part_position(self):
+        for part in self.parts:
+            part.rect.topleft = (self.struct_rect[0] + part.relative_struct[0], self.struct_rect[1] + part.relative_struct[1])
 
     def update(self, display_screen):
-        self.parts.draw(display_screen)
+        # display_screen.blit(self.struct_image, self.struct_rect)
+        self.update_part_position()
+        for part in self.parts:
+            relative_struct = part.relative_struct
+            struct = self.struct_rect.topleft
+            theta_rad = -1*m.radians(self.angle)
+            x_new = relative_struct[0] * m.cos(theta_rad) - relative_struct[1] * m.sin(theta_rad)
+            y_new = relative_struct[0] * m.sin(theta_rad) + relative_struct[1] * m.cos(theta_rad)
+            part.rect = part.display_image.get_rect(topleft=(x_new + struct[0], y_new + struct[1]))
+            display_screen.blit(part.display_image, part.rect)
+
+    def get_visible_rect(self, image):
+        rect = image.get_rect()
+        mask = pygame.mask.from_surface(image)
+        non_transparent_pixels = mask.outline()
+
+        # Find the minimum bounding box of the non-transparent pixels
+        min_x = min(pixel[0] for pixel in non_transparent_pixels)
+        max_x = max(pixel[0] for pixel in non_transparent_pixels)
+        min_y = min(pixel[1] for pixel in non_transparent_pixels)
+        max_y = max(pixel[1] for pixel in non_transparent_pixels)
+        width = max_x - min_x + 1
+        height = max_y - min_y + 1
+
+        # Adjust the position of the rectangle to match the sprite's position
+        x, y = rect.topleft
+        return pygame.Rect(x + min_x, y + min_y, width, height)
 
 class Rocket(pygame.sprite.Sprite):
     def __init__(self, pos, vel, win_settings, group, image=None, rect=None):

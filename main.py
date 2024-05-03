@@ -11,7 +11,7 @@ class SoftwareRender:
         pygame.display.set_caption('Orbit Game')
         self.RES = self.WIDTH, self.HEIGHT = 1280,720
         self.screen = pygame.display.set_mode(self.RES)
-        self.FPS = 6000
+        self.FPS = 60
         self.clock = pygame.time.Clock()
         self.scale = self.HEIGHT / 160000
 

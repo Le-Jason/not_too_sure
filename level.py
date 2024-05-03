@@ -36,9 +36,16 @@ class goundLevel:
     def run(self):
         if self.init == False:
             self.init = True
-            self.rocket = goundRocket(self.VAB_object.final_object, self.vab_pic, self.vab_pic_rec)
+            self.rocket = goundRocket(self.VAB_object.rocket, self.vab_pic, self.vab_pic_rec)
 
         if self.init == True:
+            keys = pygame.key.get_pressed()
+            if keys[pygame.K_SPACE]:
+                self.rocket.rocket_fire()
+            if keys[pygame.K_RIGHT]:
+                self.rocket.rocket_rotate(True)
+            if keys[pygame.K_LEFT]:
+                self.rocket.rocket_rotate(False)
             self.display_surface.blit(self.sky, self.sky_rec)
             self.display_surface.blit(self.vab_pic, self.vab_pic_rec)
             self.rocket.update(self.display_surface)
@@ -138,23 +145,20 @@ class Level:
 
 class VAB:
     def __init__(self, display, gameStateManager):
-        self.display = display
+        # Set variables for each level
+        self.display_surface = display
         self.gameStateManager = gameStateManager
-        self.display_surface = pygame.display.get_surface()
-
-        self.final_object = None
-
         pygame.display.set_caption('VAB')
+
+        # Set Background
         self.sky = pygame.image.load('graphics/spites/sky.png').convert_alpha()
         self.sky_rec = self.sky.get_rect(topleft=(0, 0))
-
         self.vab_pic = pygame.image.load('graphics/spites/launch_pad.png').convert_alpha()
         self.vab_pic_rec = self.vab_pic.get_rect(topleft=(0, 0))
-
         self.ui = pygame.image.load('graphics/spites/vab_ui.png').convert_alpha()
         self.ui_rec = self.ui.get_rect(topleft=(0, 0))
 
-        self.current_menu = 'NA'
+        # Set overview buttons
         self.buttons = vab_ui_button()
         self.buttons.add('Command Pod', (0, 55), (55, 42))
         self.buttons.add('Fuel Tank',(0, 55 + 48), (55, 42))
@@ -174,6 +178,9 @@ class VAB:
         self.buttons.add('Launch',(1169, 0), (43, 63))
         self.buttons.add('Leave',(1169 + 61, 0), (43, 63))
 
+        self.rocket = None
+        self.current_menu = 'NA'
+
     def run(self):
         self.display_surface.blit(self.sky, self.sky_rec)
         self.display_surface.blit(self.vab_pic, self.vab_pic_rec)
@@ -184,7 +191,7 @@ class VAB:
         self.current_menu, rocket_launch = self.buttons.click(mouse_pos, self.display_surface, self.current_menu)
 
         if self.current_menu == 'Launch':
-            self.final_object = rocket_launch
+            self.rocket = rocket_launch
             self.gameStateManager.set_state('groundLevel')
 
         self.display_surface.blit(self.ui, self.ui_rec)

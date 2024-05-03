@@ -88,7 +88,12 @@ class button_parts(pygame.sprite.Sprite):
 
         self.top_conn = False
         self.btm_conn = False
-    
+
+        self.relative_struct = (0, 0)
+
+        self.display_image = pygame.transform.rotate(self.image, 0.0)
+        self.rect = self.display_image.get_rect(topleft=(pos[0], pos[1]))
+
     def follow_mouse(self):
         current_mouse_pos = pygame.mouse.get_pos()
         if self.mouse_follow_active:
@@ -135,7 +140,7 @@ class button_parts(pygame.sprite.Sprite):
 
 class vab_ui_button:
     def __init__(self):
-        self.title = []
+        self.label = []
         self.rec = []
         self.rec_rect = []
 
@@ -148,7 +153,7 @@ class vab_ui_button:
         self.last_update_time = 0
 
     def add(self, title, pos, size):
-        self.title.append(title)
+        self.label.append(title)
         self.rec.append(pygame.Surface((size[0], size[1]), pygame.SRCALPHA))
         self.rec[-1].fill((255, 0, 0, 0))
         self.rec_rect.append(self.rec[-1].get_rect(topleft=(pos[0], pos[1])))
@@ -159,15 +164,21 @@ class vab_ui_button:
 
     def click(self, mouse_pos, display_screen, current_look):
         rocket_image = None
-        for i in range(len(self.title)):
-            if (self.rec_rect[i].collidepoint(mouse_pos) and (pygame.mouse.get_pressed()[0])) or (current_look == self.title[i]):
+        for i in range(len(self.label)):
+            if (self.rec_rect[i].collidepoint(mouse_pos) and (pygame.mouse.get_pressed()[0])) or (current_look == self.label[i]):
                 display_screen.blit(self.background, self.background_rect)
-                current_look = self.title[i]
+                current_look = self.label[i]
                 current_time = pygame.time.get_ticks()
 
                 if current_look == 'Command Pod':
                     mk1 = pygame.image.load('graphics/spites/commander_pod.png').convert_alpha()
-                    mk1_rec = mk1.get_rect(topleft=(80, 80))
+                    mk1_rec = mk1.get_rect(topleft=(77, 85))
+                    mk2 = pygame.image.load('graphics/part_holder.png').convert_alpha()
+                    mk2_rec = mk2.get_rect(topleft=(70, 80))
+                    mk3 = pygame.image.load('graphics/part_holder.png').convert_alpha()
+                    mk3_rec = mk3.get_rect(topleft=(170, 80))
+                    display_screen.blit(mk2, mk2_rec)
+                    display_screen.blit(mk3, mk3_rec)
                     display_screen.blit(mk1, mk1_rec)
                     if current_time - self.last_update_time > self.debounce_threshold:
                         if (mk1_rec.collidepoint(mouse_pos) and (pygame.mouse.get_pressed()[0])):
