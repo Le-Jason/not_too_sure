@@ -5,9 +5,9 @@ import numpy as np
 from Algorithms.KeplerProblems import *
 
 class goundRocket():
-    def __init__(self, parts, vab_pic, vab_pic_rec):
+    def __init__(self, rocket, vab_pic, vab_pic_rec):
         # TODO: fix the parachute displacement
-        
+        parts = rocket.parts
         body_bottom = 0
         body_top = 0
         body_right = 0
@@ -51,6 +51,9 @@ class goundRocket():
         self.angle = 0
         self.rotating = False
 
+        self.cg_location = rocket.cg_location
+        self.moment_of_inertia = rocket.moment_of_inertia
+    
     def rocket_rotate(self, motion):
         self.rotating = True
         if motion:

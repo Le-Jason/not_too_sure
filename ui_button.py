@@ -1,5 +1,6 @@
 import pygame
 from rocket import *
+from data.part_data import *
 
 class rocket_part_group():
     def __init__(self):
@@ -8,10 +9,36 @@ class rocket_part_group():
         self.parts_idx = []
         self.is_follow = False
 
-    def add(self, image, rec):
-        self.parts.add(button_parts(image, rec))
+        self.cg_location = [0, 0]
+        self.moment_of_inertia = 0
+
+    def add(self, image, rec, prop):
+        self.parts.add(button_parts(image, rec, prop))
         self.parts_idx.append(self.idx)
         self.idx += 1
+
+    def calc_center_of_mass(self):
+        tot_mass = 0
+        dx_mass = 0
+        dy_mass = 0
+        for part in self.parts:
+            top_left = part.rect.topleft
+            tot_mass += part.cg_location[2]
+            dx_mass += part.cg_location[2]*(part.cg_location[0]+top_left[0])
+            dy_mass += part.cg_location[2]*(part.cg_location[1]+top_left[1])
+        cg_x = dx_mass / tot_mass
+        cg_y = dy_mass / tot_mass
+        return [cg_x, cg_y]
+    
+    def calc_moment_of_inertia(self):
+        area_pix_sqrt_to_m_sqrt = 16 / 4096
+        I_tot = 0
+        for part in self.parts:
+            top_left = part.rect.topleft
+            r_sqrt = (((part.cg_location[0]+top_left[0])-self.cg_location[0])**2) + (((part.cg_location[1]+top_left[1])-self.cg_location[1])**2) * area_pix_sqrt_to_m_sqrt
+            I_tot += part.moment_of_inertia + part.mass*r_sqrt
+        print(I_tot)
+        return I_tot
 
     def player_input(self):
         mouse_buttons = pygame.mouse.get_pressed()
@@ -25,6 +52,9 @@ class rocket_part_group():
                 part.mouse_follow_active = True
                 self.is_follow = True
             elif (mouse_buttons[0] == False):
+                if self.is_follow:
+                    self.cg_location = self.calc_center_of_mass()
+                    self.moment_of_inertia = self.calc_moment_of_inertia()
                 self.check_connection()
                 part.mouse_follow_active = False
                 self.is_follow = False
@@ -70,10 +100,11 @@ class rocket_part_group():
     def update(self, display_screen):
         self.player_input()
         self.parts.draw(display_screen)
+        pygame.draw.circle(display_screen, (255, 0, 0), (self.cg_location[0], self.cg_location[1]), 1)
         self.parts.update()
 
 class button_parts(pygame.sprite.Sprite):
-    def __init__(self, image, pos):
+    def __init__(self, image, pos, properties):
         super().__init__()
 
         mouse_pos = pygame.mouse.get_pos()
@@ -93,6 +124,41 @@ class button_parts(pygame.sprite.Sprite):
 
         self.display_image = pygame.transform.rotate(self.image, 0.0)
         self.rect = self.display_image.get_rect(topleft=(pos[0], pos[1]))
+
+        self.cg_location = self.mass_location(properties)
+        self.moment_of_inertia = self.moment_of_inertia_calc(properties)
+        self.mass = properties['mass']
+
+    def mass_location(self, properties):
+        location = self.trans_rect
+        x = location[0] + location[2]/2
+        y = location[1] + location[3]/2
+        return [x, y , properties['mass']]
+    
+    def moment_of_inertia_calc(self, properties):
+        I = 0
+
+        area_pix_sqrt_to_m_sqrt = 16 / 4096
+        volume_pixel = 0
+        width, height = self.image.get_size()
+        for x in range(width):
+            for y in range(height):
+                pixel_color = self.image.get_at((x, y))
+                if pixel_color.a > 0:
+                    volume_pixel += 1
+        
+        density = properties['mass'] / volume_pixel
+
+        for x in range(width):
+            for y in range(height):
+                pixel_color = self.image.get_at((x, y))
+                if pixel_color.a > 0:
+                    r_pixel_sqrt = ((self.cg_location[0] - x) ** 2) + ((self.cg_location[1] - y) ** 2 )
+                    dA_pixel = 1
+                    dm = density * dA_pixel
+                    I += r_pixel_sqrt * dm
+        I *= area_pix_sqrt_to_m_sqrt # convert to pixels to m
+        return I
 
     def follow_mouse(self):
         current_mouse_pos = pygame.mouse.get_pos()
@@ -183,7 +249,7 @@ class vab_ui_button:
                     if current_time - self.last_update_time > self.debounce_threshold:
                         if (mk1_rec.collidepoint(mouse_pos) and (pygame.mouse.get_pressed()[0])):
                             mk1_rec = mk1.get_rect(topleft=(80, 80))
-                            self.object_1.add('graphics/spites/commander_pod.png', mk1_rec)
+                            self.object_1.add('graphics/spites/commander_pod.png', mk1_rec, mk1_prop)
                             self.last_update_time = current_time
                 elif current_look == 'Fuel Tank':
                     mk1 = pygame.image.load('graphics/spites/small_fuel_tank.png').convert_alpha()
@@ -191,7 +257,7 @@ class vab_ui_button:
                     display_screen.blit(mk1, mk1_rec)
                     if current_time - self.last_update_time > self.debounce_threshold:
                         if (mk1_rec.collidepoint(mouse_pos) and (pygame.mouse.get_pressed()[0])):
-                            self.object_1.add('graphics/spites/small_fuel_tank.png', mk1_rec)
+                            self.object_1.add('graphics/spites/small_fuel_tank.png', mk1_rec, fuel_tank_prop)
                             self.last_update_time = current_time
 
                 elif current_look == 'Rocket Engine':
@@ -200,7 +266,7 @@ class vab_ui_button:
                     display_screen.blit(mk1, mk1_rec)
                     if current_time - self.last_update_time > self.debounce_threshold:
                         if (mk1_rec.collidepoint(mouse_pos) and (pygame.mouse.get_pressed()[0])):
-                            self.object_1.add('graphics/spites/small_rocket_engine.png', mk1_rec)
+                            self.object_1.add('graphics/spites/small_rocket_engine.png', mk1_rec, rocket_engine_prop)
                             self.last_update_time = current_time
 
                 elif current_look == 'Controls':
@@ -209,7 +275,7 @@ class vab_ui_button:
                     display_screen.blit(mk1, mk1_rec)
                     if current_time - self.last_update_time > self.debounce_threshold:
                         if (mk1_rec.collidepoint(mouse_pos) and (pygame.mouse.get_pressed()[0])):
-                            self.object_1.add('graphics/spites/decoupler.png', mk1_rec)
+                            self.object_1.add('graphics/spites/decoupler.png', mk1_rec, decoupler_prop)
                             self.last_update_time = current_time
 
                     mk2 = pygame.image.load('graphics/spites/heat_shield.png').convert_alpha()
@@ -217,7 +283,7 @@ class vab_ui_button:
                     display_screen.blit(mk2, mk2_rec)
                     if current_time - self.last_update_time > self.debounce_threshold:
                         if (mk2_rec.collidepoint(mouse_pos) and (pygame.mouse.get_pressed()[0])):
-                            self.object_1.add('graphics/spites/heat_shield.png', mk2_rec)
+                            self.object_1.add('graphics/spites/heat_shield.png', mk2_rec, heat_shield_prop)
                             self.last_update_time = current_time
 
                 elif current_look == 'Miscellaneous':
@@ -226,11 +292,11 @@ class vab_ui_button:
                     display_screen.blit(mk1, mk1_rec)
                     if current_time - self.last_update_time > self.debounce_threshold:
                         if (mk1_rec.collidepoint(mouse_pos) and (pygame.mouse.get_pressed()[0])):
-                            self.object_1.add('graphics/spites/parachute.png', mk1_rec)
+                            self.object_1.add('graphics/spites/parachute.png', mk1_rec, parachute_prop)
                             self.last_update_time = current_time
 
                 elif current_look == 'Launch':
-                    rocket_image = self.object_1.parts
+                    rocket_image = self.object_1
 
         self.object_1.update(display_screen)
 
