@@ -11,12 +11,13 @@ class SoftwareRender:
         pygame.display.set_caption('Orbit Game')
         self.RES = self.WIDTH, self.HEIGHT = 1280,720
         self.screen = pygame.display.set_mode(self.RES)
+        self.length_per_pixel = 1.25 / 53
         self.FPS = 60
         self.clock = pygame.time.Clock()
-        self.scale = self.HEIGHT / 160000
-
         self.h_width = self.WIDTH // 2
         self.h_height = self.HEIGHT // 2
+        
+        self.scale = self.HEIGHT / 160000
         self.max_width = 160000
         self.max_height = 160000
         self.TIME_STEP = 10*24
@@ -26,7 +27,7 @@ class SoftwareRender:
 
         self.gameStateManager = GameStateManager('VAB')
         self.start = Start(self.screen, self.gameStateManager)
-        self.VAB = VAB(self.screen, self.gameStateManager)
+        self.VAB = VAB(self.screen, self.gameStateManager, self.length_per_pixel)
         self.level = Level(self.screen, self.gameStateManager, self.screen, self.WIDTH, self.HEIGHT, self.max_width, self.max_height,
                         self.MET_TIME, self.TIME_STEP, self.start_time)
         self.groundLevel = goundLevel(self.screen, self.gameStateManager, self.screen, self.WIDTH, self.HEIGHT, self.max_width, self.max_height,

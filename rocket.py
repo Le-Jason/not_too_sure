@@ -6,7 +6,14 @@ from Algorithms.KeplerProblems import *
 
 class goundRocket():
     def __init__(self, rocket, vab_pic, vab_pic_rec):
-        # TODO: fix the parachute displacement
+        self.length_per_pixel = 1.25 / 53
+        self.earth_radius = 6378.1363
+
+        y_min = self.earth_radius
+        y_max = (720*self.length_per_pixel) + y_min
+        x_min = -((1280/2)*self.length_per_pixel)
+        x_max = ((1280/2)*self.length_per_pixel)
+
         parts = rocket.parts
         body_bottom = 0
         body_top = 0
@@ -17,12 +24,17 @@ class goundRocket():
         launch_pad = self.get_visible_rect(vab_pic)
         launch_pad_x = vab_pic_rec[2]/2
         launch_pad_y = launch_pad[1]
+
+        # Create rocket frame
+        origin_of_struct = (0, 0)
+
         for part in parts:
             if init == False:
                 body_bottom = part.rect.bottom
                 body_top = part.rect.top
                 body_right = part.rect.right
                 body_left = part.rect.left
+                body_center = part.rect.center
                 init = True
             else:
                 if part.rect.bottom > body_bottom:
@@ -30,20 +42,38 @@ class goundRocket():
                 if part.rect.top < body_top:
                     idx += 1
                     body_top = part.rect.top
+                    body_center = part.rect.center
                 if part.rect.right > body_right:
                     body_right = part.rect.right
                 if part.rect.left < body_left:
                     body_left = part.rect.left
+
+        origin_of_struct = (0, (body_bottom - body_top)*self.length_per_pixel)
+        for part in parts:
+            relative_center_part_x = part.rect.center[0] - body_center[0]
+            relative_center_part_y = part.rect.center[1] - body_top
+            part.relative_struct_real = (relative_center_part_x, relative_center_part_y)
         
+        cg_x = (rocket.cg_location[0] - body_center[0])*self.length_per_pixel
+        cg_y = (rocket.cg_location[1] - body_top)*self.length_per_pixel
+        cg_of_struct = (cg_x, cg_y)
+        height_init = (body_bottom - body_top)*self.length_per_pixel
+        origin_of_struct = (0, height_init + (launch_pad_y*self.length_per_pixel))
+
+        self.cg_location = rocket.cg_location
         for i, part in enumerate(parts):
             if i == idx:
                 self.struct_image = pygame.Surface((abs(body_right - body_left) , abs(body_top - body_bottom)))
                 self.struct_image.fill((255 , 0 , 0))
                 self.struct_rect = self.struct_image.get_rect()
                 self.struct_rect.topleft = (part.rect.topleft[0], part.rect.topleft[1])
+                self.cg_location_body = (self.cg_location[0] - part.rect.topleft[0], self.cg_location[1] - part.rect.topleft[1])
 
         for part in parts:
             self.init_relative(part)
+
+        for part in parts:
+            part.cg_total_location = (self.cg_location[0] - part.rect.center[0], self.cg_location[1] - part.rect.center[1])
 
         self.struct_rect.topleft = (launch_pad_x - ((body_right - body_left)/2), launch_pad_y - abs(body_top - body_bottom))
         self.parts = parts
@@ -51,7 +81,6 @@ class goundRocket():
         self.angle = 0
         self.rotating = False
 
-        self.cg_location = rocket.cg_location
         self.moment_of_inertia = rocket.moment_of_inertia
     
     def rocket_rotate(self, motion):
@@ -71,6 +100,14 @@ class goundRocket():
         dy = thrust[0] * m.sin(flight_path_angle) + thrust[1] * m.cos(flight_path_angle)
         self.struct_rect.center = (center[0] + dx*2, center[1] + dy*2)
 
+        center = self.cg_location
+        thrust = [0, -1]
+        flight_path_angle = m.radians(self.angle % 360)
+        dx = -1*(thrust[0] * m.cos(flight_path_angle) - thrust[1] * m.sin(flight_path_angle))
+        dy = thrust[0] * m.sin(flight_path_angle) + thrust[1] * m.cos(flight_path_angle)
+        self.cg_location = (center[0] + dx*2, center[1] + dy*2)
+        self.cg_location = center
+
     def init_relative(self, part):
         top_left = part.rect.topleft
         struct_top_left = self.struct_rect.topleft
@@ -86,13 +123,21 @@ class goundRocket():
         # display_screen.blit(self.struct_image, self.struct_rect)
         self.update_part_position()
         for part in self.parts:
-            relative_struct = part.relative_struct
-            struct = self.struct_rect.topleft
+            relative_struct = part.cg_total_location
+            struct = self.struct_rect.center
             theta_rad = -1*m.radians(self.angle)
             x_new = relative_struct[0] * m.cos(theta_rad) - relative_struct[1] * m.sin(theta_rad)
             y_new = relative_struct[0] * m.sin(theta_rad) + relative_struct[1] * m.cos(theta_rad)
-            part.rect = part.display_image.get_rect(topleft=(x_new + struct[0], y_new + struct[1]))
-            display_screen.blit(part.display_image, part.rect)
+            part.rect = part.display_image.get_rect(center=(x_new + struct[0], y_new + struct[1]))
+            part.display_rec = part.display_image.get_rect(center=part.rect.center)
+            display_screen.blit(part.display_image, part.display_rec)
+        
+        theta_rad = -1*m.radians(self.angle)
+        x_new = self.cg_location_body[0]
+        y_new = self.cg_location_body[1] 
+        print((self.cg_location[0] + struct[0], self.cg_location[1] + struct[1]))
+        pygame.draw.circle(display_screen, (255, 0, 0), (x_new + struct[0], y_new + struct[1]), 1)
+        pygame.draw.circle(display_screen, (255, 0, 0), (self.cg_location[0] + struct[0], self.cg_location[1] + struct[1]), 1)
 
     def get_visible_rect(self, image):
         rect = image.get_rect()
