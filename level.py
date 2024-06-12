@@ -144,10 +144,11 @@ class Level:
         self.MET_TIME += self.TIME_STEP
 
 class VAB:
-    def __init__(self, display, gameStateManager):
+    def __init__(self, display, gameStateManager, length_per_pixel):
         # Set variables for each level
         self.display_surface = display
         self.gameStateManager = gameStateManager
+        self.length_per_pixel = length_per_pixel
         pygame.display.set_caption('VAB')
 
         # Set Background
