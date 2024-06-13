@@ -4,30 +4,13 @@ import numpy as np
 
 from Algorithms.KeplerProblems import *
 
-class goundRocket():
-    def __init__(self, rocket, vab_pic, vab_pic_rec):
-        self.length_per_pixel = 1.25 / 53
-        self.earth_radius = 6378.1363
-
-        y_min = self.earth_radius
-        y_max = (720*self.length_per_pixel) + y_min
-        x_min = -((1280/2)*self.length_per_pixel)
-        x_max = ((1280/2)*self.length_per_pixel)
-
-        parts = rocket.parts
+class StructFrame():
+    def __init__(self, parts, cg, length_per_pixel):
         body_bottom = 0
         body_top = 0
         body_right = 0
         body_left = 0
         init = False
-        idx = 0
-        launch_pad = self.get_visible_rect(vab_pic)
-        launch_pad_x = vab_pic_rec[2]/2
-        launch_pad_y = launch_pad[1]
-
-        # Create rocket frame
-        origin_of_struct = (0, 0)
-
         for part in parts:
             if init == False:
                 body_bottom = part.rect.bottom
@@ -40,104 +23,121 @@ class goundRocket():
                 if part.rect.bottom > body_bottom:
                     body_bottom = part.rect.bottom
                 if part.rect.top < body_top:
-                    idx += 1
                     body_top = part.rect.top
                     body_center = part.rect.center
                 if part.rect.right > body_right:
                     body_right = part.rect.right
                 if part.rect.left < body_left:
                     body_left = part.rect.left
-
-        origin_of_struct = (0, (body_bottom - body_top)*self.length_per_pixel)
         for part in parts:
             relative_center_part_x = part.rect.center[0] - body_center[0]
             relative_center_part_y = part.rect.center[1] - body_top
             part.relative_struct_real = (relative_center_part_x, relative_center_part_y)
-        
-        cg_x = (rocket.cg_location[0] - body_center[0])*self.length_per_pixel
-        cg_y = (rocket.cg_location[1] - body_top)*self.length_per_pixel
-        cg_of_struct = (cg_x, cg_y)
-        height_init = (body_bottom - body_top)*self.length_per_pixel
-        origin_of_struct = (0, height_init + (launch_pad_y*self.length_per_pixel))
+        cg_x = (cg[0] - body_center[0])
+        cg_y = (cg[1] - body_top)
 
-        self.cg_location = rocket.cg_location
-        for i, part in enumerate(parts):
-            if i == idx:
-                self.struct_image = pygame.Surface((abs(body_right - body_left) , abs(body_top - body_bottom)))
-                self.struct_image.fill((255 , 0 , 0))
-                self.struct_rect = self.struct_image.get_rect()
-                self.struct_rect.topleft = (part.rect.topleft[0], part.rect.topleft[1])
-                self.cg_location_body = (self.cg_location[0] - part.rect.topleft[0], self.cg_location[1] - part.rect.topleft[1])
-
-        for part in parts:
-            self.init_relative(part)
-
-        for part in parts:
-            part.cg_total_location = (self.cg_location[0] - part.rect.center[0], self.cg_location[1] - part.rect.center[1])
-
-        self.struct_rect.topleft = (launch_pad_x - ((body_right - body_left)/2), launch_pad_y - abs(body_top - body_bottom))
+        self.height = (body_bottom - body_top)*length_per_pixel
+        self.width = (body_right - body_left)*length_per_pixel
+        self.origin = (-cg_x, -cg_y)
         self.parts = parts
-        self.display_parts = parts
-        self.angle = 0
-        self.rotating = False
+        self.rotation = 0
 
-        self.moment_of_inertia = rocket.moment_of_inertia
-    
+class goundRocket():
+    def __init__(self, rocket, vab_pic, vab_pic_rec):
+        self.length_per_pixel = 1.25 / 53
+        self.earth_radius = 6378.1363
+        self.G = 6.673E-20         # gravitational coefficient [km^3/kg*s^2]
+        self.m = 5.973320E24       # mass [kg]
+        self.mu = self.G * self.m   # gravitational parameter [km^3/s^2]
+
+        y_min = self.earth_radius
+        y_max = (720*self.length_per_pixel) + y_min
+        x_min = -((1280/2)*self.length_per_pixel)
+        x_max = ((1280/2)*self.length_per_pixel)
+        self.screen_dim = [y_min, y_max, x_min, x_max]
+
+        launch_pad = self.get_visible_rect(vab_pic)
+        launch_pad_x = vab_pic_rec[2]/2
+        launch_pad_y = launch_pad[3]
+
+        # Create rocket frame
+        self.struct_frame = StructFrame(rocket.parts, rocket.cg_location, self.length_per_pixel)
+
+        self.state = [0, self.struct_frame.height + (launch_pad_y*self.length_per_pixel) + self.earth_radius + (self.struct_frame.origin[1]*self.length_per_pixel), 0 , 0, 0, 0]
+
+    def map_real_to_screen(self, display_screen, screen_dim, length_per_pixel, struct_frame, state):
+        y_max = screen_dim[1]
+        x_min = screen_dim[2]
+
+        center_of_mass = ((state[0] - x_min) / length_per_pixel, (y_max - state[1]) / length_per_pixel)
+        origin_x = struct_frame.origin[0]*np.cos(np.deg2rad(struct_frame.rotation)) - struct_frame.origin[1]*np.sin(np.deg2rad(struct_frame.rotation))
+        origin_y = struct_frame.origin[0]*np.sin(np.deg2rad(struct_frame.rotation)) + struct_frame.origin[1]*np.cos(np.deg2rad(struct_frame.rotation))
+        origin_ = (center_of_mass[0] + origin_x, center_of_mass[1] + origin_y)
+
+        for part in struct_frame.parts:
+            center_x = part.relative_struct_real[0]*np.cos(np.deg2rad(struct_frame.rotation)) - part.relative_struct_real[1]*np.sin(np.deg2rad(struct_frame.rotation))
+            center_y = part.relative_struct_real[0]*np.sin(np.deg2rad(struct_frame.rotation)) + part.relative_struct_real[1]*np.cos(np.deg2rad(struct_frame.rotation))
+            part.rect.center = (origin_[0] + center_x, origin_[1] + center_y)
+            display_image = pygame.transform.rotate(part.image, -1*struct_frame.rotation)
+            display_rec = display_image.get_rect(center=part.rect.center)
+            display_screen.blit(display_image, display_rec)
+
+        pygame.draw.circle(display_screen, (255, 0, 0), center_of_mass, 1)
+        pygame.draw.circle(display_screen, (0, 255, 0), origin_, 1)
+
+
+
     def rocket_rotate(self, motion):
-        self.rotating = True
         if motion:
-            self.angle += 1
+            self.struct_frame.rotation += 1
         else:
-            self.angle -= 1
-        for part in self.parts:
-            part.display_image = pygame.transform.rotate(part.image, self.angle)
+            self.struct_frame.rotation -= 1
 
     def rocket_fire(self):
-        center = self.struct_rect.center
-        thrust = [0, -1]
-        flight_path_angle = m.radians(self.angle % 360)
-        dx = -1*(thrust[0] * m.cos(flight_path_angle) - thrust[1] * m.sin(flight_path_angle))
-        dy = thrust[0] * m.sin(flight_path_angle) + thrust[1] * m.cos(flight_path_angle)
-        self.struct_rect.center = (center[0] + dx*2, center[1] + dy*2)
+        temp_isp = 300
+        temp_g0 =  9.80665
+        temp_F = 20
+        delta_m = temp_F / (temp_isp * temp_g0)
+        temp_m0 = 1000
+        delta_v = temp_isp*temp_g0*m.log(temp_m0 / (temp_m0 - (delta_m*1)))
 
-        center = self.cg_location
-        thrust = [0, -1]
-        flight_path_angle = m.radians(self.angle % 360)
-        dx = -1*(thrust[0] * m.cos(flight_path_angle) - thrust[1] * m.sin(flight_path_angle))
-        dy = thrust[0] * m.sin(flight_path_angle) + thrust[1] * m.cos(flight_path_angle)
-        self.cg_location = (center[0] + dx*2, center[1] + dy*2)
-        self.cg_location = center
 
-    def init_relative(self, part):
-        top_left = part.rect.topleft
-        struct_top_left = self.struct_rect.topleft
-        rel_x = top_left[0] - struct_top_left[0]
-        rel_y = top_left[1] - struct_top_left[1]
-        part.relative_struct = (rel_x, rel_y)
+        vector = [0, delta_v]
+        vector_x = vector[0]*np.cos(np.deg2rad(-1*self.struct_frame.rotation)) - vector[1]*np.sin(np.deg2rad(-1*self.struct_frame.rotation))
+        vector_y = vector[0]*np.sin(np.deg2rad(-1*self.struct_frame.rotation)) + vector[1]*np.cos(np.deg2rad(-1*self.struct_frame.rotation))
 
-    def update_part_position(self):
-        for part in self.parts:
-            part.rect.topleft = (self.struct_rect[0] + part.relative_struct[0], self.struct_rect[1] + part.relative_struct[1])
+        print("X:"+str(vector_x))
+        print("Y:"+str(vector_y))
+
+        self.state = [self.state[0], self.state[1], 0, self.state[3] + vector_x, self.state[4] + vector_y, 0]
 
     def update(self, display_screen):
-        # display_screen.blit(self.struct_image, self.struct_rect)
-        self.update_part_position()
-        for part in self.parts:
-            relative_struct = part.cg_total_location
-            struct = self.struct_rect.center
-            theta_rad = -1*m.radians(self.angle)
-            x_new = relative_struct[0] * m.cos(theta_rad) - relative_struct[1] * m.sin(theta_rad)
-            y_new = relative_struct[0] * m.sin(theta_rad) + relative_struct[1] * m.cos(theta_rad)
-            part.rect = part.display_image.get_rect(center=(x_new + struct[0], y_new + struct[1]))
-            part.display_rec = part.display_image.get_rect(center=part.rect.center)
-            display_screen.blit(part.display_image, part.display_rec)
-        
-        theta_rad = -1*m.radians(self.angle)
-        x_new = self.cg_location_body[0]
-        y_new = self.cg_location_body[1] 
-        print((self.cg_location[0] + struct[0], self.cg_location[1] + struct[1]))
-        pygame.draw.circle(display_screen, (255, 0, 0), (x_new + struct[0], y_new + struct[1]), 1)
-        pygame.draw.circle(display_screen, (255, 0, 0), (self.cg_location[0] + struct[0], self.cg_location[1] + struct[1]), 1)
+        self.state = self.rk4(0, self.state, 1, self.two_body_ode)
+        self.map_real_to_screen(display_screen, self.screen_dim, self.length_per_pixel, self.struct_frame, self.state)
+
+    def propagate_body(self, t, state, dt, f, timespan):
+        traj = []
+        while t < timespan:
+            state = self.rk4(t, state, dt, f)
+            t += dt
+            traj.append([state[0], state[1], state[2]])
+        return traj
+
+
+    def two_body_ode(self, t, state):
+        state = np.array(state)
+        r = state[:3] - [0, 0, 0]
+        a = -self.mu * r / np.linalg.norm(r) ** 3
+        return np.array([state[3], state[4], state[5], 
+                        a[0], a[1], a[2]])
+
+    def rk4(self, t, state, dt, f):
+    # RK4 Numerical Methods 
+        k1 = f(t, state)
+        k2 = f(t + dt/2, state + dt/2 * k1)
+        k3 = f(t + dt/2, state + dt/2 * k2)
+        k4 = f(t + dt, state + dt * k3)
+        return state + dt/6 * (k1 + 2*k2 + 2*k3 + k4)
 
     def get_visible_rect(self, image):
         rect = image.get_rect()

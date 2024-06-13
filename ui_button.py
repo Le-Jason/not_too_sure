@@ -121,14 +121,8 @@ class button_parts(pygame.sprite.Sprite):
         self.top_conn = False
         self.btm_conn = False
 
-        self.relative_struct = (0, 0)
         self.relative_struct_real = (0, 0)
 
-        self.display_image = pygame.transform.rotate(self.image, 0.0)
-        self.display_rec = self.display_image.get_rect(topleft=(pos[0], pos[1]))
-        self.rect = self.display_image.get_rect(topleft=(pos[0], pos[1]))
-
-        self.cg_total_location = (0, 0)
         self.cg_location = self.mass_location(properties)
         self.moment_of_inertia = self.moment_of_inertia_calc(properties)
         self.mass = properties['mass']
