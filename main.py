@@ -16,28 +16,25 @@ class SoftwareRender:
         self.clock = pygame.time.Clock()
         self.h_width = self.WIDTH // 2
         self.h_height = self.HEIGHT // 2
-        
-        self.scale = self.HEIGHT / 160000
-        self.max_width = 160000
-        self.max_height = 160000
         self.TIME_STEP = 10*24
-        self.MET_TIME = 0
+        self.system_info = {
+            'length_per_pixel': self.length_per_pixel,
+            'WIDTH': self.WIDTH,
+            'HEIGHT': self.HEIGHT,
+            'TIME_STEP': self.TIME_STEP,
+        }
 
         self.start_time = pygame.time.get_ticks()
 
         self.gameStateManager = GameStateManager('VAB')
         self.start = Start(self.screen, self.gameStateManager)
         self.VAB = VAB(self.screen, self.gameStateManager, self.length_per_pixel)
-        self.level = Level(self.screen, self.gameStateManager, self.screen, self.WIDTH, self.HEIGHT, self.max_width, self.max_height,
-                        self.MET_TIME, self.TIME_STEP, self.start_time)
-        self.groundLevel = goundLevel(self.screen, self.gameStateManager, self.screen, self.WIDTH, self.HEIGHT, self.max_width, self.max_height,
-                        self.MET_TIME, self.TIME_STEP, self.start_time, self.VAB)
+        self.level = Level(self.screen, self.gameStateManager, self.screen, self.system_info, self.start_time, self.VAB)
         
         self.states = {
             'start': self.start,
             'level': self.level,
             'VAB': self.VAB,
-            'groundLevel': self.groundLevel
         }
 
     def draw(self, planet):

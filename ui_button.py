@@ -127,6 +127,8 @@ class button_parts(pygame.sprite.Sprite):
         self.moment_of_inertia = self.moment_of_inertia_calc(properties)
         self.mass = properties['mass']
 
+        self.mask = pygame.mask.from_surface(self.image)
+
     def mass_location(self, properties):
         location = self.trans_rect
         x = location[0] + location[2]/2
