@@ -2,3 +2,5 @@ asm/
 __pycache__/
 Algorithms/__pycache__/
 task.md
+settings.json
+test.py

@@ -96,75 +96,153 @@ def Anomaly2v(e,E,p=0,r=0):
     print("Anomaly2v : error")
     return 1
 
-def RV2COE(r,v):
-    mu = 398600.4418
-    h = np.cross(r.flatten(),v.flatten())
-    hNorm = m.sqrt(np.dot(h,h))
-    K = np.array([0,0,1])
-    n = np.cross(K,h)
-    nNorm = m.sqrt(np.dot(n,n))
-    vNorm = m.sqrt(np.dot(v.flatten(),v.flatten()))
-    rNorm = m.sqrt(np.dot(r.flatten(),r.flatten()))
-    e = ((((vNorm**2) - (mu/rNorm))*r) - (np.dot(r.flatten(),v.flatten())*v)) / mu
-    l = ((vNorm**2)/2) - (mu/rNorm)
-    eNorm = m.sqrt(np.dot(e.flatten(),e.flatten()))
-    if (eNorm != 1.0):
-        a = -mu/(2*l)
-        p = a*(1 - (eNorm**2))
-    else:
-        p = (hNorm**2)/mu
-        a = 10000000000000000000 #inf
-    i = m.acos(h[2]/hNorm)
-    try:
-        if (n[1] >= 0):
-            RAAN = m.acos(n[0]/nNorm)
-        elif (n[1] < 0):
-            RAAN = (2*m.pi) - m.acos(n[0]/nNorm)
-    except RuntimeWarning:
-        RAAN = float('nan')
-    try:
-        if (e[2] >= 0):
-            w = m.acos(np.dot(n.flatten(),e.flatten())/(nNorm*eNorm))
-        elif (e[2] < 0):
-            w = (2*np.pi) - m.acos(np.dot(n.flatten(),e.flatten())/(nNorm*eNorm))
-    except RuntimeWarning:
-        w = float('nan')
-    if (np.dot(r.flatten(),v.flatten()) >= 0):
-        truev = m.acos(np.dot(e.flatten(),r.flatten())/(eNorm*rNorm))
-    elif (np.dot(r.flatten(),v.flatten()) < 0):
-        truev = (2*np.pi) - m.acos(np.dot(e.flatten(),r.flatten())/(eNorm*rNorm))
-    if (e[1] >= 0):
-        wtrue = m.acos(e[0]/eNorm)
-    elif (e[1] < 0):
-        wtrue = (2*np.pi) - m.acos(e[0]/eNorm)
-    try:
-        if (r[2] >= 0):
-            u = m.acos(np.dot(n,r.flatten())/(nNorm*rNorm))
-        elif (r[2] < 0):
-            u = (2*np.pi) - m.acos(np.dot(n,r.flatten())/(nNorm*rNorm))
-    except RuntimeWarning:
-        u = float('nan')
-    if (r[1] >= 0):
-        lambdatrue = m.acos(r[0]/rNorm)
-    elif (r[1] < 0):
-        lambdatrue = (2*np.pi) - m.acos(r[0]/rNorm)
-    
-    # Special Cases
-    # Circular Equatorial
-    if m.isnan(RAAN) and m.isnan(w) and (eNorm == 1.0):
-        RAAN = 0.0
-        w = 0.0
-        truev = lambdatrue
-    # Circular Inclined
-    elif m.isnan(w) and (eNorm == 1.0):
-        w = 0.0
-        truev = u
-    # Elliptical Equatorial
-    elif m.isnan(RAAN) and (eNorm != 1.0):
-        RAAN = 0.0
-        w = wtrue
+def RV2COE(r, v, mu):
+    '''
+    %--------------------------------------------------------------------------
+    %
+    %  rv2coe: Finds the classical orbital elements given the geocentric
+    %          equatorial position and velocity vectors.
+    %
+    %  Inputs:         description                    range / units
+    %    r           - ijk position vector            m
+    %    v           - ijk velocity vector            m/s
+    %
+    %  Outputs:
+    %    p           - semilatus rectum               m
+    %    a           - semimajor axis                 m
+    %    ecc         - eccentricity
+    %    incl        - inclination                    0.0  to pi rad
+    %    omega       - longitude of ascending node    0.0  to 2pi rad
+    %    argp        - argument of perigee            0.0  to 2pi rad
+    %    nu          - true anomaly                   0.0  to 2pi rad
+    %    m           - mean anomaly                   0.0  to 2pi rad
+    %    arglat      - argument of latitude      (ci) 0.0  to 2pi rad
+    %    truelon     - true longitude            (ce) 0.0  to 2pi rad
+    %    lonper      - longitude of periapsis    (ee) 0.0  to 2pi rad
+    %
+    %--------------------------------------------------------------------------
+    '''
+    small = 1e-10
+    undefined = 999999.1e6
 
-    return (p, a, eNorm, i, RAAN, w, truev)
+    rmag = np.linalg.norm(r)
+    vmag = np.linalg.norm(v)
+    
+    # find h n and e vectors
+    h = np.cross(r.flatten(),v.flatten())
+    hmag = np.linalg.norm(h)
+    if ( hmag > small):
+        K = np.array([0,0,1])
+        n = np.cross(K,h)
+        nmag = np.linalg.norm(n)
+        e = ((((vmag**2) - (mu/rmag))*r) - (np.dot(r.flatten(),v.flatten())*v)) / mu
+        emag = np.linalg.norm(e)
+
+        # find a e and semi-latus rectum
+        l = ((vmag**2)/2) - (mu/rmag)
+        if (emag != 1.0):
+            a = -mu/(2*l)
+            if emag < 1.0:
+                p = a*(1 - (emag**2))
+            else:
+                p = a*((emag**2) - 1)
+        else:
+            p = (hmag**2)/mu
+            a = 10000000000000000000000 #inf
+
+        # find inclination
+        i = np.arccos(h[2]/hmag)
+
+        # determine type of orbit for later use
+        # elliptical, parabolic, hyperbolic inclined
+        typeorbit = 'ei'
+        if (emag < small):
+            # circular equatorial
+            if  (i < small) | (abs(i - np.pi) < small):
+                typeorbit = 'ce'
+            else:
+                # circular inclined
+                typeorbit = 'ci'
+        else:
+            # elliptical, parabolic, hyperbolic equatorial
+            if (i < small) or (abs(i - np.pi) < small):
+                typeorbit = 'ee'
+        
+        # find longitude of ascending node
+        if (nmag > small):
+            temp = n[0] / nmag
+            if (abs(temp) > 1.0):
+                temp = np.sign(temp)
+            RAAN = np.arccos(temp)
+            if (n[1] < 0):
+                RAAN = (2*m.pi) - RAAN
+        else:
+            RAAN = undefined
+
+        # find argument of perigee
+        if typeorbit == 'ei':
+            w = m.acos(np.dot(n.flatten(),e.flatten())/(nmag*emag))
+            if e[2] < 0.0:
+                w = 2*np.pi - w
+        else:
+            w = undefined
+
+        # find true anomaly at epoch
+        if 'e' in typeorbit:
+            temp = np.dot(e.flatten(),r.flatten())/(emag*rmag)
+            if (abs(temp) > 1.0):
+                temp = np.sign(temp)
+            truev = np.arccos(temp)
+            if (np.dot(r.flatten(),v.flatten()) < 0):
+                truev = 2*np.pi - truev
+
+        # find argument of latitude - circular inclined
+        if typeorbit == 'ci':
+            arglat = np.arccos(np.dot(n,r.flatten())/(nmag*rmag))
+            if (r[2] < 0):
+                arglat = 2*np.pi - arglat
+            me = arglat
+        else:
+            arglat = undefined
+        
+        # find longitude of perigee - elliptical equatorial
+        if (emag > small) and (typeorbit == 'ee'):
+            temp = e[0] / emag
+            if (abs(temp) > 1.0):
+                temp = np.sign(temp)
+            lonper = np.arccos(temp)
+            if (e[1] < 0.0):
+                lonper = 2*np.pi - lonper
+            if (i > np.pi/2):
+                lonper = 2*np.pi - lonper
+        else:
+            lonper = undefined
+        
+        # find true longitude - circular equatorial
+        if (rmag > small) and (typeorbit == 'ce'):
+            temp = r[0] / rmag
+            if (abs(temp) > 1.0):
+                temp = np.sign(temp)
+            truelon = np.arccos(temp)
+            if (r[1] < 0):
+                truelon = 2*np.pi - truelon
+            if (i > np.pi/2):
+                truelon = 2*np.pi - truelon
+            me = truelon
+        else:
+            truelon = undefined
+    else:
+        p = undefined
+        a = undefined
+        emag = undefined
+        i = undefined
+        RAAN = undefined
+        w = undefined
+        truev = undefined
+        arglat = undefined
+        truelon = undefined
+        lonper = undefined
+    return (p, a, emag, i , RAAN, w, truev, arglat, truelon, lonper)
 
 def ROT1(alpha):
     A = np.array([1.0, 0.0, 0.0,
@@ -188,38 +266,93 @@ def ROT3(alpha):
     return A
 
 
+def COE2RV(p, e, i, RAAN, w, v, arglat, truelon, lonper, mu):
+    '''
+    % ------------------------------------------------------------------------------
+    %
+    %                           function coe2rv
+    %
+    %  this function finds the position and velocity vectors in geocentric
+    %    equatorial (ijk) system given the classical orbit elements.
+    %
+    %  author        : david vallado                  719-573-2600    9 jun 2002
+    %
+    %  revisions
+    %    vallado     - add constant file use                         29 jun 2003
+    %
+    %  inputs          description                    range / units
+    %    p           - semilatus rectum               km
+    %    ecc         - eccentricity
+    %    incl        - inclination                    0.0  to pi rad
+    %    omega       - longitude of ascending node    0.0  to 2pi rad
+    %    argp        - argument of perigee            0.0  to 2pi rad
+    %    nu          - true anomaly                   0.0  to 2pi rad
+    %    arglat      - argument of latitude      (ci) 0.0  to 2pi rad
+    %    truelon     - true longitude            (ce) 0.0  to 2pi rad
+    %    lonper      - longitude of periapsis    (ee) 0.0  to 2pi rad
+    %
+    %  outputs       :
+    %    r           - ijk position vector            km
+    %    v           - ijk velocity vector            km / s
+    %
+    %  locals        :
+    %    temp        - temporary real*8 value
+    %    rpqw        - pqw position vector            km
+    %    vpqw        - pqw velocity vector            km / s
+    %    sinnu       - sine of nu
+    %    cosnu       - cosine of nu
+    %    tempvec     - pqw velocity vector
+    %
+    %  coupling      :
+    %    mag         - magnitude of a vector
+    %    rot3        - rotation about the 3rd axis
+    %    rot1        - rotation about the 1st axis
+    %
+    %  references    :
+    %    vallado       2007, 126, alg 10, ex 2-5
+    %
+    % [r,v] = coe2rv ( p,ecc,incl,omega,argp,nu,arglat,truelon,lonper );
+    % ------------------------------------------------------------------------------
+    '''
+    small = 1e-10
+    if e < small:
+        # circular equatorial 
+        if i < small or abs(i - np.pi) < small:
+            w = 0.0
+            RAAN = 0.0
+            v = truelon
+        # circular inclined
+        else:
+            w = 0.0
+            v = arglat
+    else:
+        # elliptical equatorial
+        if i < small or abs(i - np.pi) < small:
+            w = lonper
+            RAAN = 0.0
 
-def COE2RV(a,e,i,RAAN,w,v,u=0,lambdatrue=0,wtrue=0):
-    mu = 398600.4418
-    p = a*(1 - e**2)
-    # if circular equatorial
-    # w = 0.0
-    # RAAN = 0.0
-    # v = lambdatrue
-
-    # if circular inclined
-    # w = 0.0
-    # v = u
-
-    # if elliptical equatorial
-    # RAAN = 0.0
-    # w = wtrue
-
-    rPQW = [(p*m.cos(v))/(1 + (e*m.cos(v))),
-            (p*m.sin(v))/(1 + (e*m.cos(v))),
+    # form pqw position and velocity vectors
+    cosnu = np.cos(v)
+    sinnu = np.sin(v)
+    temp = p / (1.0 + e * cosnu)
+    rPQW = [temp * cosnu,
+            temp * sinnu,
             0.0]
-    vPQW = [-m.sqrt(mu/p)*m.sin(v),
-            m.sqrt(mu/p)*(e + m.cos(v)),
+    if abs(p) < 0.0001:
+        p = 0.0001
+    vPQW = [-sinnu * np.sqrt(mu) / np.sqrt(p),
+            (e + cosnu) * np.sqrt(mu) / np.sqrt(p),
             0.0]
     
-    # 3-1-3 Rotation ROT3(-RAAN)*ROT1(-i)*ROT3(-w)
-    T_PQW_IJK = np.matmul(ROT1(-i), ROT3(-w))
-    T_PQW_IJK = np.matmul(ROT3(-RAAN), T_PQW_IJK)
+    # 3-1-3 Rotation: ROT3(-RAAN) * ROT1(-i) * ROT3(-w)
+    # perform transformation to ijk
+    T_PQW_IJK = np.dot(ROT1(-i), ROT3(-w))
+    T_PQW_IJK = np.dot(ROT3(-RAAN), T_PQW_IJK)
 
-    rIJK = np.matmul(T_PQW_IJK,rPQW)
-    vIJK = np.matmul(T_PQW_IJK,vPQW)
+    rIJK = np.dot(T_PQW_IJK, rPQW)
+    vIJK = np.dot(T_PQW_IJK, vPQW)
 
-    return (rIJK,vIJK)
+    return rIJK, vIJK
 
 def KeplerCOE(r0,v0,deltat):
     [p,a,e,i,RAAN,w,truev] = RV2COE(r0,v0)
@@ -302,33 +435,46 @@ def Kepler(r0,v0,deltat):
         print("Kepler : fgdot - fdotg did not equal 1")
         return r,v
     
-def findTOF(r0,r,p):
-    mu = 398600.4418
-    r0Norm = m.sqrt(np.dot(r0,r0))
-    rNorm = m.sqrt(np.dot(r,r))
-    cosdeltav = (np.dot(r0,r))/(r0Norm * rNorm)
-    deltav = m.acos(cosdeltav)
-    k = r0Norm*rNorm*(1 - cosdeltav)
-    l = r0Norm + rNorm
-    ml = r0Norm*rNorm*(1 + cosdeltav)
-    a = (ml*k*p)/((((2*ml) - (l**2))*p**2) + (2*k*l*p) - (k**2))
-    f = 1 - ((rNorm/p)*(1 - cosdeltav))
-    g = (r0Norm * rNorm * m.sin(deltav))/(m.sqrt(mu*p))
+def findTOF(r0, r1, p, mu):
+    small = 1e-10
+    if abs(p) < 0.0001:
+        p = 0.0001
+
+    r0mag = np.linalg.norm(r0)
+    r1mag = np.linalg.norm(r1)
+
+    temp = (np.dot(r0,r1))/(r0mag * r1mag)
+    if (abs(temp) > 1.0):
+        temp = np.sign(temp)
+    cosdeltav = temp
+    deltav = np.arccos(cosdeltav)
+
+    k = r0mag*r1mag*(1 - cosdeltav)
+    l = r0mag + r1mag
+    ml = r0mag*r1mag*(1 + cosdeltav)
+    temp = ((((2*ml) - (l**2))*p*p) + (2*k*l*p) - (k**2))
+    if temp < small:
+        temp = small
+    a = (ml*k*p)/temp
+    f = 1 - ((r1mag/p)*(1 - cosdeltav))
+    g = (r0mag * r1mag * m.sin(deltav))/(m.sqrt(mu*p))
+
+    TOF = 0.0
     if (a > 0.0):
-        fdot = m.sqrt(mu/p)*m.tan(deltav/2)*(((1-cosdeltav)/p) - (1/r0Norm) - (1/rNorm))
-        cosdeltaE = 1 - ((r0Norm/a)*(1 - f))
-        sindeltaE = (-r0Norm*rNorm*fdot)/(m.sqrt(mu*a))
+        temp = 1 - ((r0mag/a)*(1 - f))
+        if (abs(temp) > 1.0):
+            temp = np.sign(temp)
+        cosdeltaE = temp
         deltaE = m.acos(cosdeltaE)
-        TOF = g + (m.sqrt(a**3/mu)*(deltaE - sindeltaE))
+        TOF = g + (m.sqrt(a**3/mu)*(deltaE - m.sin(deltaE)))
+
     if (a > 100000000000000000000):
-        c = m.sqrt((r0Norm**2) + (rNorm**2) - (2*r0Norm*rNorm*m.cos(deltav)))
-        s = (r0Norm + rNorm + c) / 2
+        c = m.sqrt((r0mag**2) + (r1mag**2) - (2*r0mag*r1mag*m.cos(deltav)))
+        s = (r0mag + r1mag + c) / 2
         TOF = (2/3)*(np.sqrt(s**3/(2*mu)))*(1 - (((s-c)/s)**(3/2)))
+
     elif (a < 0.0):
-        coshdeltaH = 1 + ((f - 1)*(r0Norm/a))
+        coshdeltaH = 1 + ((f - 1)*(r0mag/a))
         deltaH = m.acosh(coshdeltaH)
         TOF = g + ((m.sqrt(((abs(a))**3)/mu))*(m.sinh(deltaH) - deltaH))
     return TOF
-
-# deg2rad = m.pi/180
-# print(findTOF(np.array([-2574.9533,4267.0671,4431.5025]),np.array([2700.6738,-4303.5378,-4358.2499]),6681.571))

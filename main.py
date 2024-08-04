@@ -11,7 +11,8 @@ class SoftwareRender:
         pygame.display.set_caption('Orbit Game')
         self.RES = self.WIDTH, self.HEIGHT = 1280,720
         self.screen = pygame.display.set_mode(self.RES)
-        self.length_per_pixel = 1.25 / 53
+        self.length_per_pixel = 1.25 / 53 # m to pixel
+        self.length_per_pixel_map = 6378136.3 / 193.5 # Based on Earth pixel map
         self.FPS = 60
         self.clock = pygame.time.Clock()
         self.h_width = self.WIDTH // 2
@@ -19,6 +20,7 @@ class SoftwareRender:
         self.TIME_STEP = 10*24
         self.system_info = {
             'length_per_pixel': self.length_per_pixel,
+            'length_per_pixel_map': self.length_per_pixel_map,
             'WIDTH': self.WIDTH,
             'HEIGHT': self.HEIGHT,
             'TIME_STEP': self.TIME_STEP,

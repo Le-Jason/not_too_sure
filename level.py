@@ -5,19 +5,10 @@ from level import *
 from ui_button import *
 from dynamics import *
 from graphics import *
+from object import *
 from ui import *
 import pygame
 from sys import exit
-
-class Background_Objects(pygame.sprite.Sprite):
-    def __init__(self, image, state, display_mode='EXACT', location_init='center'):
-        super().__init__()
-        self.image = pygame.image.load(image).convert_alpha()
-        self.rect = self.image.get_rect(topleft=(0, 0))
-        self.mask = pygame.mask.from_surface(self.image)
-        self.state = state
-        self.location_init = location_init
-        self.display_mode = display_mode
 
 class Level:
     def __init__(self, display, gameStateManager, display_surface, system_info, start_time,
@@ -26,20 +17,18 @@ class Level:
         self.display = display
         self.gameStateManager = gameStateManager
         self.display_surface = display_surface
+        self.level = 'rocket' # Level start view
 
-        # Create Dynamics Class
+        # Create Manager Classes
         self.dynamics = Dynamics()
-        self.graphics = Graphics(display_surface, system_info)
-
-        # Create UI Class
+        self.graphics = Graphics(display_surface, system_info, self.dynamics.env.sky_color, self.dynamics.env.radius)
         self.ui = RocketUI(display_surface, system_info)
 
         # Create Level Sprites
         pygame.display.set_caption('Gound Level')
-        self.sky = pygame.image.load('graphics/spites/sky.png').convert_alpha()
-        self.sky_rec = self.sky.get_rect(topleft=(0, 0))
-        self.vab = Background_Objects('graphics/spites/launch_pad_2.png', [0, 6385.2, 0 , 0, 0, 0])
-        self.gnd = Background_Objects('graphics/ground.png', [0, 6378.1363, 0 , 0, 0, 0], 'LOCKED_Y', location_init='top')
+        self.earth = Background_Objects('graphics/ui/earth.png', [0, 0, 0 , 0, 0, 0], system_info['length_per_pixel'], size=6378136.3*2)
+        self.vab = Background_Objects('graphics/spites/launch_pad_2.png', [0, 6378143.3, 0 , 0, 0, 0], system_info['length_per_pixel'])
+        self.gnd = Background_Objects('graphics/ground.png', [0, 6378136.3, 0 , 0, 0, 0], system_info['length_per_pixel'], location_init='top')
         self.object_group = pygame.sprite.Group()
         self.object_group.add(self.gnd)
         self.object_group.add(self.vab)
@@ -53,63 +42,70 @@ class Level:
 
         self.VAB_object = VAB_object
         self.init = False
-        self.scroll = 0
-        self.tiles = m.ceil(self.WIDTH / self.sky.get_width()) + 1
-        # self.tiles_gnd = m.ceil(self.WIDTH / self.gnd_pic.get_width()) + 1
+
+        # Used for key press debounce
+        self.debounce_threshold = 500 # Wait for 500 ticks 
+        self.last_update_time = 0     # Counter for last updated time
+
+        # Used for scaling
+        self.scale = 1.0
+        self.scale_increment = 0.01
 
     def run(self):
+        # Wait til the VAB level get a working rocket
         if self.init == False:
             self.init = True
             self.rocket = Rocket(self.VAB_object.rocket, self.length_per_pixel)
 
+        # Start level
         if self.init == True:
+            current_time = pygame.time.get_ticks()
             keys = pygame.key.get_pressed()
+            # Fire the current rocket engines
             if keys[pygame.K_SPACE]:
                 self.rocket.rocket_fire()
+            # Rotate the rocket clockwise
             if keys[pygame.K_RIGHT]:
                 self.rocket.rocket_rotate(True)
+            # Rotate the rocket counter-clockwise
             if keys[pygame.K_LEFT]:
                 self.rocket.rocket_rotate(False)
+            # Scale the level up
+            if keys[pygame.K_UP]:
+                self.scale += self.scale_increment
+            # Scale the level down
+            if keys[pygame.K_DOWN]:
+                self.scale -= self.scale_increment
+            # Switch the level views
+            if keys[pygame.K_m]:
+                if current_time - self.last_update_time > self.debounce_threshold:
+                    if self.level == 'rocket':
+                        self.level = 'map'
+                    else:
+                        self.level = 'rocket'
+                    self.last_update_time = current_time
 
             # Update Models
-            self.rocket.update()
-            self.dynamics.update()
+            self.dynamics.update(self.rocket)
+
+            # Update Graphics
+            self.gnd.update_state(self.rocket)
+            self.graphics.update(self.rocket, self.dynamics.env)
+            self.graphics.map_object_to_screen(self.gnd, 'rocket_view')
+            self.graphics.map_object_to_screen(self.vab, 'rocket_view')
+            self.graphics.map_rocket_to_screen(self.rocket, 'rocket_view')
+            if self.level == 'rocket':
+                self.ui.update(self.rocket, self.dynamics.env)
+            if self.level == 'map':
+                self.graphics.update_map(self.rocket, self.dynamics.env.mu)
+                # self.earth.scaled_image(self.scale)
+                self.graphics.scaled_map(self.scale, 'map_view')
+                self.graphics.map_object_to_screen(self.earth, 'map_view')
+                self.ui.update(self.rocket, self.dynamics.env)
+
+            # # Update Models
             self.dynamics.update_rocket(self.rocket, self.object_group)
-
-            # Update Background
-            for i in range(0, self.tiles):
-                self.sky_rec = ((i * self.sky.get_width()) + self.scroll, 0)
-                self.display_surface.blit(self.sky, self.sky_rec)
-            self.scroll -= 5
-            
-            if abs(self.scroll) > self.sky.get_width():
-                self.scroll = 0
-            self.display_surface.blit(self.sky, self.sky_rec)
-
-            # Update Rockets and Objects
-            self.graphics.update(self.rocket)
-            self.graphics.map_object_to_screen(self.gnd)
-            self.graphics.map_object_to_screen(self.vab)
-            self.graphics.map_rocket_to_screen(self.rocket)
-            self.ui.update(self.rocket)
-
-            
-    def get_visible_rect(self, image):
-        rect = image.get_rect()
-        mask = pygame.mask.from_surface(image)
-        non_transparent_pixels = mask.outline()
-
-        # Find the minimum bounding box of the non-transparent pixels
-        min_x = min(pixel[0] for pixel in non_transparent_pixels)
-        max_x = max(pixel[0] for pixel in non_transparent_pixels)
-        min_y = min(pixel[1] for pixel in non_transparent_pixels)
-        max_y = max(pixel[1] for pixel in non_transparent_pixels)
-        width = max_x - min_x + 1
-        height = max_y - min_y + 1
-
-        # Adjust the position of the rectangle to match the sprite's position
-        x, y = rect.topleft
-        return pygame.Rect(x + min_x, y + min_y, width, height)
+            self.rocket.update(self.dynamics.env.mu)
 
 class VAB:
     def __init__(self, display, gameStateManager, length_per_pixel):
