@@ -28,8 +28,8 @@ class SoftwareRender:
 
         self.start_time = pygame.time.get_ticks()
 
-        self.gameStateManager = GameStateManager('VAB')
-        self.start = Start(self.screen, self.gameStateManager)
+        self.gameStateManager = GameStateManager('start')
+        self.start = Start(self.screen, self.gameStateManager, self.system_info)
         self.VAB = VAB(self.screen, self.gameStateManager, self.length_per_pixel)
         self.level = Level(self.screen, self.gameStateManager, self.screen, self.system_info, self.start_time, self.VAB)
         

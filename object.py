@@ -1,5 +1,73 @@
 import pygame
 import numpy as np
+from core import *
+
+class Main_Menu_Sprite(pygame.sprite.Sprite):
+    def __init__(self, image):
+        super().__init__()
+        self.og_image = pygame.image.load(image).convert_alpha()
+        self.image = pygame.image.load(image).convert_alpha()
+        self.rect = self.image.get_rect(center=(0, 0))
+
+        self.inverse_mass = 0
+        self.position = Vector3()
+        self.velocity = Vector3()
+        self.rotation = 0
+        self.acceleration = Vector3()
+
+
+    def set_position(self, x, y):
+        self.rect.center = (x, y)
+        self.rect = self.image.get_rect(center=self.rect.center)
+
+    def set_velocity(self, velocity):
+        self.velocity = velocity
+
+    def set_acceleration(self, acceleration):
+        pass
+
+    def set_rotation(self, rotation):
+        self.rotation = rotation
+    
+    def update_angle(self):
+        self.angle += self.rotation
+
+    def integrate(self, duration):
+
+        pass
+
+    def update(self):
+        self.update_angle()
+        update_positon = (self.rect.center[0], self.rect.center[1] + self.velocity)
+        self.set_position(update_positon[0], update_positon[1])
+        self.image = pygame.transform.rotate(self.og_image, self.angle)
+        self.rect = self.image.get_rect(center=self.rect.center)
+
+class Main_Menu_Objects(pygame.sprite.Sprite):
+    def __init__(self, image):
+        super().__init__()
+        self.og_image = pygame.image.load(image).convert_alpha()
+        self.image = pygame.image.load(image).convert_alpha()
+        self.rect = self.image.get_rect(center=(0, 0))
+        self.mask = pygame.mask.from_surface(self.image)
+        self.rotation = 0
+        self.angle = 0
+    
+    def set_position(self, x, y):
+        self.rect.center = (x, y)
+        self.rect = self.image.get_rect(center=self.rect.center)
+
+    def set_rotation(self, rotation):
+        self.rotation = rotation
+    
+    def update_angle(self):
+        self.angle += self.rotation
+
+    def update(self):
+        self.update_angle()
+        self.image = pygame.transform.rotate(self.og_image, self.angle)
+        self.rect = self.image.get_rect(center=self.rect.center)
+
 
 class Background_Objects(pygame.sprite.Sprite):
     def __init__(self, image, state, length_per_pixel, display_mode='EXACT', location_init='center', size=0):

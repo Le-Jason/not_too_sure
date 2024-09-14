@@ -20,7 +20,7 @@ class Level:
         self.level = 'rocket' # Level start view
 
         # Create Manager Classes
-        self.dynamics = Dynamics()
+        self.dynamics = Dynamics(system_info)
         self.graphics = Graphics(display_surface, system_info, self.dynamics.env.sky_color, self.dynamics.env.radius)
         self.ui = RocketUI(display_surface, system_info)
 
@@ -103,8 +103,11 @@ class Level:
                 self.graphics.map_object_to_screen(self.earth, 'map_view')
                 self.ui.update(self.rocket, self.dynamics.env)
 
+            # pygame.draw.circle(self.display_surface, (255, 0, 0), self.dynamics.overlap, 1)
+            # pygame.draw.circle(self.display_surface, (255, 0, 0), self.dynamics.part_overlap, 1)
+
             # # Update Models
-            self.dynamics.update_rocket(self.rocket, self.object_group)
+            self.dynamics.update_rocket(self.rocket, self.object_group, self.graphics.screen_frame_dim)
             self.rocket.update(self.dynamics.env.mu)
 
 class VAB:
@@ -163,48 +166,62 @@ class VAB:
 
 
 class Start:
-    def __init__(self, display,gameStateManager):
+    def __init__(self, display,gameStateManager, system_info):
         self.display = display
         self.gameStateManager = gameStateManager
+        self.system_info = system_info
 
         pygame.display.set_caption('Main Menu')
         self.display_surface = pygame.display.get_surface()
-        self.background = pygame.image.load('graphics/start_menu.png').convert_alpha()
-        self.background_rec = self.background.get_rect(topleft = (0,0))
 
-        self.title = pygame.image.load('graphics/title.png').convert_alpha()
-        self.title_rec = self.title.get_rect(topleft = (-100,-100))
+        self.title_text = NoSurroundingButton('Space Simulator', 'font/Pixeltype.ttf', 200)
+        self.title_text.set_position(self.system_info['WIDTH']/2, self.system_info['HEIGHT'] * 0.25)
+        self.title_text.set_color('#b5cfff')
 
-        self.font = pygame.font.Font('font/Pixeltype.ttf', 100)
-        start_text = "Start Game"
-        setting_text = "Settings"
-        quit_text = "Quit"
-        self.font_surface = self.font.render(start_text, False, 'Blue')
-        self.text_rect = self.font_surface.get_rect(topleft = (500, 350))
-        self.font_surface_2 = self.font.render(setting_text, False, 'Blue')
-        self.text_rect_2 = self.font_surface_2.get_rect(topleft = (545, 450))
-        self.font_surface_3 = self.font.render(quit_text, False, 'Blue')
-        self.text_rect_3 = self.font_surface_3.get_rect(topleft = (600, 550))
+        self.earth_bg = Main_Menu_Objects('graphics/title_earth.png')
+        self.earth_bg.set_position(self.system_info['WIDTH']/2, self.system_info['HEIGHT'] * 1.3)
+        self.earth_bg.set_rotation(0.05)
+
+        self.space_bg = Main_Menu_Objects('graphics/space_background.png')
+        self.space_bg.set_position(self.system_info['WIDTH']/2, self.system_info['HEIGHT']/2)
+
+        self.start_button = NoSurroundingButton('Start Game', 'font/Pixeltype.ttf', 100)
+        self.start_button.set_position(self.system_info['WIDTH']/2, self.system_info['HEIGHT'] * 0.45)
         
+        self.settings_button = NoSurroundingButton('Settings', 'font/Pixeltype.ttf', 100)
+        self.settings_button.set_position(self.system_info['WIDTH']/2, self.system_info['HEIGHT'] * 0.60)
+
+        self.quit_button = NoSurroundingButton('Quit', 'font/Pixeltype.ttf', 100)
+        self.quit_button.set_position(self.system_info['WIDTH']/2, self.system_info['HEIGHT'] * 0.75)
+
+        self.penguin = Main_Menu_Sprite('graphics/penguin_suit.png')
+        self.penguin.set_position(self.system_info['WIDTH']/2, self.system_info['HEIGHT']/2)
+        self.penguin.set_rotation(0.03)
 
     def run(self):
-        self.display_surface.blit(self.background, self.background_rec)
-        self.display_surface.blit(self.title, self.title_rec)
-        self.display_surface.blit(self.font_surface, self.text_rect)
-        self.display_surface.blit(self.font_surface_2, self.text_rect_2)
-        self.display_surface.blit(self.font_surface_3, self.text_rect_3)
+        self.earth_bg.update()
+        self.penguin.update()
 
-        mouse_pos = pygame.mouse.get_pos()
-        if self.text_rect.collidepoint(mouse_pos):
-            if (pygame.mouse.get_pressed()[0]):
-                self.gameStateManager.set_state('VAB')
-        if self.text_rect_2.collidepoint(mouse_pos):
-            print(pygame.mouse.get_pressed()[0])
+        self.display_surface.blit(self.space_bg.image, self.space_bg.rect)
+        self.display_surface.blit(self.earth_bg.image, self.earth_bg.rect)
+        self.display_surface.blit(self.penguin.image, self.penguin.rect)
 
-        if self.text_rect_3.collidepoint(mouse_pos):
-            if (pygame.mouse.get_pressed()[0]):
-                pygame.quit()
-                exit()
+        self.start_button.update(pygame.mouse.get_pos(), actions=[self.switch_levels])
+        self.settings_button.update(pygame.mouse.get_pos())
+        self.quit_button.update(pygame.mouse.get_pos(), actions=[self.quit_game])
+
+        self.display_surface.blit(self.title_text.font_surface, self.title_text.font_rect)
+        self.display_surface.blit(self.start_button.font_surface, self.start_button.font_rect)
+        self.display_surface.blit(self.settings_button.font_surface, self.settings_button.font_rect)
+        self.display_surface.blit(self.quit_button.font_surface, self.quit_button.font_rect)
+
+    
+    def quit_game(self):
+        pygame.quit()
+        exit()
+
+    def switch_levels(self):
+        self.gameStateManager.set_state('VAB')
 
 class GameStateManager:
     def __init__(self, currentState):

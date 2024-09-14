@@ -9,11 +9,13 @@ class StructFrame():
     Augments:
         parts (Sprite Group): Sprite Group of rocket during creation level
         com_screen_coords (array of two): Location of center of mass in screen coords
+        moment_of_inertia (array[9]): Moment of inertia of the vehicle
         length_per_pixel (double): meters per pixel
 
     """
-    def __init__(self, parts, com_screen_coords, length_per_pixel):
+    def __init__(self, parts, com_screen_coords, moment_of_inertia, length_per_pixel):
         # Determine the dimensions of the rocket structure in screen coordinates
+        self.moment_of_inertia = moment_of_inertia
         bottom_limit_screen_coords = 0
         top_limit_screen_coords = 0
         right_limit_screen_coords = 0
@@ -55,6 +57,8 @@ class StructFrame():
         self.parts = parts
         self.rotation = 0
 
+    
+
 class Rocket():
     """
     Class Structure that creates the rocket object and also manages it
@@ -66,13 +70,18 @@ class Rocket():
     """
     def __init__(self, rocket, length_per_pixel):
         # Create rocket frame and parts
-        self.struct_frame = StructFrame(rocket.parts, rocket.cg_location, length_per_pixel)
+        self.struct_frame = StructFrame(rocket.parts, rocket.cg_location, rocket.moment_of_inertia, length_per_pixel)
         self.parts = rocket.parts
 
         # Assign members
         self.collision = False
         self.state = [0, 6378140.3, 0 , 0, 0, 0]
+        self.ang_state = [0, 0]
         self.prev_state = [0, 6378140.3, 0 , 0, 0, 0]
+        self.prev_ang_state = [0, 0]
+
+        self.rotation_moment = 5000 #Nm
+        self.sum_moment = 0
 
         # Assign Orbital Mechanics Variables
         self.semilatus_rectum = 0
@@ -91,12 +100,11 @@ class Rocket():
         self.A = 0.2
         self.m = 0.2
 
+        # For information display
         self.periapsis = 0.0
         self.apoapsis = 0.0
-
         self.periapsis_tof = 0.0
         self.apoapsis_tof = 0.0
-        self.COE = None
 
     def rocket_rotate(self, motion):
         """ Rotate the rocket structural frame
@@ -105,9 +113,9 @@ class Rocket():
             motion (double): flag to determine rotate
         """
         if motion:
-            self.struct_frame.rotation += 1
+            self.sum_moment += self.rotation_moment
         else:
-            self.struct_frame.rotation -= 1
+            self.sum_moment -= self.rotation_moment
 
     def rocket_fire(self):
         """ Fire the rocket engine are add delta-V
@@ -127,7 +135,7 @@ class Rocket():
         delta_v_vector = [0, delta_v]
 
         # Rotate the vector to match the rocket orientation
-        rotation_rad = np.deg2rad(-1*self.struct_frame.rotation)
+        rotation_rad = np.deg2rad(-1*self.ang_state[0])
         delta_v_I = delta_v_vector[0]*np.cos(rotation_rad) - delta_v_vector[1]*np.sin(rotation_rad)
         delta_v_J = delta_v_vector[0]*np.sin(rotation_rad) + delta_v_vector[1]*np.cos(rotation_rad)
 

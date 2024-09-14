@@ -95,7 +95,7 @@ class Graphics:
             length_per_pixel = self.length_per_pixel_map_view
 
         # Rotation in radians
-        rotation_radians = np.deg2rad(rocket.struct_frame.rotation)
+        rotation_radians = np.deg2rad(rocket.ang_state[0])
 
         # Convert the rocket IJK Center of Mass State to screen coordinates
         screen_coords_cg = ((rocket.state[0] - x_min) / length_per_pixel, (y_max - rocket.state[1]) / length_per_pixel)
@@ -112,7 +112,7 @@ class Graphics:
             part_center_screen_coords_y = part.relative_struct_real[0]*np.sin(rotation_radians) + part.relative_struct_real[1]*np.cos(rotation_radians)
             part.rect.center = (screen_coords_origin[0] + part_center_screen_coords_x, screen_coords_origin[1] + part_center_screen_coords_y)
             # Update and Draw the part
-            display_image = pygame.transform.rotate(part.image, -1*rocket.struct_frame.rotation)
+            display_image = pygame.transform.rotate(part.image, -1*rocket.ang_state[0])
             part.rect = display_image.get_rect(center=part.rect.center)
             part.mask = pygame.mask.from_surface(display_image)
             self.display_screen.blit(display_image, part.rect)

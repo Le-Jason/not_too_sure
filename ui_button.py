@@ -301,3 +301,40 @@ class vab_ui_button:
         self.object_1.update(display_screen)
 
         return current_look, rocket_image
+
+
+class NoSurroundingButton():
+    def __init__(self, text, font, size):
+        self.color = '#f7f7f7'     # Default to yellow
+        self.highlight = '#f4fc03' # Default to white
+        self.font = pygame.font.Font(font, size)
+        self.font_surface = self.font.render(text, False, self.color)
+        self.font_rect = self.font_surface.get_rect(center=(500, 350))
+        self.text = text
+        self.clickable = False
+
+    def set_color(self, color):
+        self.color = color
+        self.font_surface = self.font.render(self.text, False, self.color)
+
+    def set_highlight(self, highlight):
+        self.highlight = highlight
+
+    def set_position(self, x, y):
+        self.font_rect.center = (x, y)
+        self.font_rect = self.font_surface.get_rect(center=self.font_rect.center)
+    
+    def check_for_input(self, mouse_position, actions):
+        if (self.font_rect.collidepoint(mouse_position) and pygame.mouse.get_pressed()[0]) and mouse_position[0] in range(self.font_rect.left, self.font_rect.right) and (mouse_position[1] in range(self.font_rect.top, self.font_rect.bottom)):
+            for act in actions:
+                act()
+
+    def change_color(self, mouse_position):
+        if mouse_position[0] in range(self.font_rect.left, self.font_rect.right) and mouse_position[1] in range(self.font_rect.top, self.font_rect.bottom):
+            self.font_surface = self.font.render(self.text, False, self.color)
+        else:
+            self.font_surface = self.font.render(self.text, False, self.highlight)
+
+    def update(self, mouse_position, actions=[]):
+        self.change_color(mouse_position)
+        self.check_for_input(mouse_position, actions)
