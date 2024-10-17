@@ -1,0 +1,89 @@
+{
+    "Mk1 Command Pod": 
+        {
+            "image": "graphics/spites/commander_pod.png",
+            "mass": "0.84",
+            "Tolerance Impact": "14.0",
+            "Tolerance Pressure": "4000",
+            "Max Temperature": "2200",
+            "Crew Capacity": "1",
+            "Electric Charge": "50.0",
+            "Monopropellant": "10.0",
+            "Manufacturer": "Elevate Model Rockets & Supplies",
+            "Description": "Initially created as a placeholder for a demonstration mock-up of a rocket, the Mk1 Command Pod was praised by rocket scientists worldwide for being a significantly safer and more reliable choice than earlier models. Today, it is frequently used in active missions.",
+            "Cost": "600.00",
+            "type": "pod"
+        },
+
+    "Mk16 Parachute": 
+        {
+            "image": "graphics/spites/parachute.png",
+            "mass": "0.1",
+            "Tolerance Impact": "12.0",
+            "Tolerance Pressure": "4000",
+            "Max Temperature": "2500",
+            "Manufacturer": "Dumpster Treasure",
+            "Description": "While some may see the Mk16 Parachute as simply a hodgepodge of leftover components, it is widely acknowledged as a more favorable choice than freefall.",
+            "Cost": "422.00",
+            "type": "miscellaneous"
+        },
+
+    "LV-T45 Liquid Fuel Engine": 
+        {
+            "image": "graphics/spites/small_rocket_engine.png",
+            "mass": "1.5",
+            "Tolerance Impact": "7.0",
+            "Tolerance Pressure": "4000",
+            "Max Temperature": "2000",
+            "Thrust (ASL)": "167.969",
+            "Thrust (Vac)": "215.0",
+            "Manufacturer": "Arctic Cave Junkyard and Space Parts Co",
+            "Description": "The LV-T45 engine was seen as a significant advancement in the LV-T series because of its thrust vectoring capability. This feature allows the LV-T45 to redirect its thrust, enhancing craft control. However, these additional mechanics result in a slightly smaller and heavier engine compared to other LV-T models.",
+            "Cost": "1200.00",
+            "type": "engine"
+        },
+
+    "FL-T200 Fuel Tank": 
+        {
+            "image": "graphics/spites/small_fuel_tank.png",
+            "mass": "1.125",
+            "Tolerance Impact": "6.0",
+            "Tolerance Pressure": "4000",
+            "Max Temperature": "2000",
+            "Liquid Fuel": "90.0",
+            "Oxidizer": "110.0",
+            "Manufacturer": "Arctic Cave Junkyard and Space Parts Co",
+            "Description": "The T200 tank faced challenges in the spacecraft engineering world. This reaction persisted until the number of fiery explosions during assembly prompted strict guidelines against 'teasing the fuel containers.' Now, the T200 is widely used in various space programs and performs well provided its handled with care",
+            "Cost": "275.00",
+            "type": "tank"
+        },
+
+    "Heat Shield (1.25m)": 
+        {
+            "image": "graphics/spites/heat_shield.png",
+            "mass": "0.3",
+            "Tolerance Impact": "9.0",
+            "Tolerance Pressure": "4000",
+            "Max Temperature": "3300",
+            "Ejection Force": "100.0",
+            "Ablator": "200.0",
+            "Manufacturer": "P.E.N. Demolition Enterprises",
+            "Description": "A small structural heat shield",
+            "Cost": "300.00",
+            "type": "heat_shield"
+        },
+
+    "TD-12 Decoupler": 
+        {
+            "image": "graphics/spites/decoupler.png",
+            "mass": "0.04",
+            "Tolerance Impact": "6.0",
+            "Tolerance Pressure": "4000",
+            "Max Temperature": "2000",
+            "Ejection Force": "100.0",
+            "Manufacturer": "P.E.N. Demolition Enterprises",
+            "Description": "The TD-12 Stack Decoupler features a small explosive charge designed to cut the structural connection between itself and whatever it's attached to. Arrows painted on its sides clearly indicate which side will detach.",
+            "Cost": "200.00",
+            "type": "decoupler"
+        }
+}

@@ -8,6 +8,7 @@ from sys import exit
 class SoftwareRender:
     def __init__(self):
         pygame.init()
+        pygame.mixer.init()
         pygame.display.set_caption('Orbit Game')
         self.RES = self.WIDTH, self.HEIGHT = 1280,720
         self.screen = pygame.display.set_mode(self.RES)
@@ -30,7 +31,7 @@ class SoftwareRender:
 
         self.gameStateManager = GameStateManager('start')
         self.start = Start(self.screen, self.gameStateManager, self.system_info)
-        self.VAB = VAB(self.screen, self.gameStateManager, self.length_per_pixel)
+        self.VAB = VAB(self.screen, self.gameStateManager, self.system_info)
         self.level = Level(self.screen, self.gameStateManager, self.screen, self.system_info, self.start_time, self.VAB)
         
         self.states = {
@@ -49,10 +50,14 @@ class SoftwareRender:
                 if event.type == pygame.QUIT:
                     pygame.quit()
                     exit()
-
+            if self.gameStateManager.currentState != self.gameStateManager.prev_state:
+                self.gameStateManager.prev_state = self.gameStateManager.currentState
+                self.states[self.gameStateManager.get_state()].initialization()
             self.states[self.gameStateManager.get_state()].run()
             pygame.display.update()
             self.clock.tick(self.FPS)
+            # fps = self.clock.get_fps()
+            # print(f'FPS: {fps:.2f}')
 
 if __name__ == '__main__':
     app = SoftwareRender()
