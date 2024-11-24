@@ -1,5 +1,5 @@
 {
-    "Mk1 Command Pod": 
+    "Mk1 Command Pod":
         {
             "image": "graphics/spites/commander_pod.png",
             "mass": "0.84",
@@ -12,10 +12,11 @@
             "Manufacturer": "Elevate Model Rockets & Supplies",
             "Description": "Initially created as a placeholder for a demonstration mock-up of a rocket, the Mk1 Command Pod was praised by rocket scientists worldwide for being a significantly safer and more reliable choice than earlier models. Today, it is frequently used in active missions.",
             "Cost": "600.00",
-            "type": "pod"
+            "type": "pod",
+            "stick": ["top", "bottom"]
         },
 
-    "Mk16 Parachute": 
+    "Mk16 Parachute":
         {
             "image": "graphics/spites/parachute.png",
             "mass": "0.1",
@@ -25,10 +26,11 @@
             "Manufacturer": "Dumpster Treasure",
             "Description": "While some may see the Mk16 Parachute as simply a hodgepodge of leftover components, it is widely acknowledged as a more favorable choice than freefall.",
             "Cost": "422.00",
-            "type": "miscellaneous"
+            "type": "miscellaneous",
+            "stick": ["top", "bottom"]
         },
 
-    "LV-T45 Liquid Fuel Engine": 
+    "LV-T45 Liquid Fuel Engine":
         {
             "image": "graphics/spites/small_rocket_engine.png",
             "mass": "1.5",
@@ -40,10 +42,11 @@
             "Manufacturer": "Arctic Cave Junkyard and Space Parts Co",
             "Description": "The LV-T45 engine was seen as a significant advancement in the LV-T series because of its thrust vectoring capability. This feature allows the LV-T45 to redirect its thrust, enhancing craft control. However, these additional mechanics result in a slightly smaller and heavier engine compared to other LV-T models.",
             "Cost": "1200.00",
-            "type": "engine"
+            "type": "engine",
+            "stick": ["top", "bottom"]
         },
 
-    "FL-T200 Fuel Tank": 
+    "FL-T200 Fuel Tank":
         {
             "image": "graphics/spites/small_fuel_tank.png",
             "mass": "1.125",
@@ -55,10 +58,11 @@
             "Manufacturer": "Arctic Cave Junkyard and Space Parts Co",
             "Description": "The T200 tank faced challenges in the spacecraft engineering world. This reaction persisted until the number of fiery explosions during assembly prompted strict guidelines against 'teasing the fuel containers.' Now, the T200 is widely used in various space programs and performs well provided its handled with care",
             "Cost": "275.00",
-            "type": "tank"
+            "type": "tank",
+            "stick": ["top", "bottom"]
         },
 
-    "Heat Shield (1.25m)": 
+    "Heat Shield (1.25m)":
         {
             "image": "graphics/spites/heat_shield.png",
             "mass": "0.3",
@@ -70,10 +74,26 @@
             "Manufacturer": "P.E.N. Demolition Enterprises",
             "Description": "A small structural heat shield",
             "Cost": "300.00",
-            "type": "heat_shield"
+            "type": "heat_shield",
+            "stick": ["top", "bottom"]
         },
 
-    "TD-12 Decoupler": 
+    "Basic Fin":
+        {
+            "image": "graphics/spites/basic_fins.png",
+            "mass": "0.01",
+            "Tolerance Impact": "4.0",
+            "Tolerance Pressure": "4000",
+            "Max Temperature": "934",
+            "Lifting Surface": "0.12",
+            "Manufacturer": "Arctic Cave Junkyard and Space Parts Co",
+            "Description": "This basic bolt-on aluminum fin may not be the pinnacle of aerospace innovation, but it's budget-friendly and will enhance your rocket's stability just a bit.",
+            "Cost": "25.00",
+            "type": "fins",
+            "stick": ["right", "left"]
+        },
+
+    "TD-12 Decoupler":
         {
             "image": "graphics/spites/decoupler.png",
             "mass": "0.04",
@@ -84,6 +104,21 @@
             "Manufacturer": "P.E.N. Demolition Enterprises",
             "Description": "The TD-12 Stack Decoupler features a small explosive charge designed to cut the structural connection between itself and whatever it's attached to. Arrows painted on its sides clearly indicate which side will detach.",
             "Cost": "200.00",
-            "type": "decoupler"
+            "type": "decoupler",
+            "stick": ["top", "bottom"]
+        },
+    "TT-38K Radial Decoupler":
+        {
+            "image": "graphics/spites/radial_decoupler.png",
+            "mass": "0.025",
+            "Tolerance Impact": "8.0",
+            "Tolerance Pressure": "4000",
+            "Max Temperature": "2000",
+            "Ejection Force": "250.0",
+            "Manufacturer": "P.E.N. Demolition Enterprises",
+            "Description": "The TT-38K Radial Decoupler, similar to other decouplers, contains a small explosive charge designed to detach it from whatever its connected to by severing the structural link.",
+            "Cost": "600.00",
+            "type": "radial_decoupler",
+            "stick": ["left", "right"]
         }
 }

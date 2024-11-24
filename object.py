@@ -140,12 +140,12 @@ class Main_Menu_Sprite(pygame.sprite.Sprite):
 
     def set_angle(self, angle):
         self.angle = angle
-    
+
     def integrate(self, dt):
         # Assume gravity in the acceleration vector
         self.velocity.addScaledVector(self.acceleration, dt)
         self.position.addScaledVector(self.velocity, dt)
-        self.angle += self.rotation * dt 
+        self.angle += self.rotation * dt
 
         self.set_position(self.position.x, self.position.y, 0)
         self.set_angle(self.angle)
@@ -158,16 +158,23 @@ class Main_Menu_Sprite(pygame.sprite.Sprite):
 class Main_Menu_Objects(pygame.sprite.Sprite):
     def __init__(self, image):
         super().__init__()
+        # Load the image and set up initial properties
         self.og_image = pygame.image.load(image).convert_alpha()
         self.image = pygame.image.load(image).convert_alpha()
         self.rect = self.image.get_rect(center=(0, 0))
+        self.mask = pygame.mask.from_surface(self.image)
+
+        # Dimension Variables
         self.og_width = self.rect.width
         self.og_height = self.rect.height
+
+        # Scaling Variables
         self.scaled_width = self.og_width
         self.scaled_height = self.og_height
+
         self.rotation = 0
         self.angle = 0
-    
+
     def set_position(self, x, y):
         self.rect.center = (x, y)
         self.rect = self.image.get_rect(center=self.rect.center)
@@ -178,7 +185,7 @@ class Main_Menu_Objects(pygame.sprite.Sprite):
     def set_scale(self, scale):
         self.scaled_width = int(self.og_width * scale)
         self.scaled_height = int(self.og_height * scale)
-    
+
     def update_angle(self):
         self.angle += self.rotation
 
@@ -206,7 +213,6 @@ class Background_Objects(pygame.sprite.Sprite):
         self.og_width = self.rect.width
         self.og_height = self.rect.height
 
-        
         if location_init == 'top':
             temp = self.og_height / length_per_pixel  #TODO units
             self.state[1] -= 8
@@ -217,10 +223,10 @@ class Background_Objects(pygame.sprite.Sprite):
 
     def update_state(self, rocket):
         pos = rocket.state[:3]
-        unit_vec = np.array(pos) / np.linalg.norm(pos)  
+        unit_vec = np.array(pos) / np.linalg.norm(pos)
         self.state = [self.test*unit_vec[0], self.test*unit_vec[1], self.test*unit_vec[2], 0, 0, 0]
         self.rotation = -1*np.rad2deg(np.arctan2(unit_vec[0], unit_vec[1]))
-    
+
     def scaled_image(self, scale):
         scaled_width = int(self.og_width * scale)
         scaled_height = int(self.og_height * scale)
@@ -230,11 +236,11 @@ class Background_Objects(pygame.sprite.Sprite):
     def get_mask_bounding_box(self, mask):
         # Get the size of the mask
         width, height = mask.get_size()
-        
+
         # Initialize the bounding box coordinates
         min_x, min_y = width, height
         max_x, max_y = 0, 0
-        
+
         # Iterate over the mask to find the bounding box of non-transparent pixels
         for x in range(width):
             for y in range(height):

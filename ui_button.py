@@ -3,6 +3,9 @@ from rocket import *
 from data.part_data import *
 from rocket_parts import *
 import json
+from labels import *
+from utils import *
+from abc import abstractmethod
 
 class rocket_part_group():
     def __init__(self):
@@ -33,7 +36,7 @@ class rocket_part_group():
         cg_x = dx_mass / tot_mass
         cg_y = dy_mass / tot_mass
         return [cg_x, cg_y]
-    
+
     def calc_moment_of_inertia(self):
         area_pix_sqrt_to_m_sqrt = 16 / 4096
         I_tot = 0
@@ -136,7 +139,7 @@ class button_parts(pygame.sprite.Sprite):
         x = location[0] + location[2]/2
         y = location[1] + location[3]/2
         return [x, y , properties['mass']]
-    
+
     def moment_of_inertia_calc(self, properties):
         I = 0
 
@@ -148,7 +151,7 @@ class button_parts(pygame.sprite.Sprite):
                 pixel_color = self.image.get_at((x, y))
                 if pixel_color.a > 0:
                     volume_pixel += 1
-        
+
         density = properties['mass'] / volume_pixel
 
         for x in range(width):
@@ -206,366 +209,203 @@ class button_parts(pygame.sprite.Sprite):
     def update(self):
         self.follow_mouse()
 
-class vab_ui_button:
-    def __init__(self):
-        self.label = []
-        self.rec = []
-        self.rec_rect = []
+class VABButton():
+    def __init__(self, image_name, background_name, name, image_state='', background_state=''):
+        # Image Variables
+        self.image_name = image_name
+        self.image_state = image_state
+        self.image = Image(f'{image_name}{image_state}.png')
 
-        self.background = pygame.Surface((275, 720), pygame.SRCALPHA)  # Create a surface with per-pixel alpha
-        self.background.fill((70, 70, 70, 200))
-        self.background_rect = self.background.get_rect(topleft=(0, 0))
-        self.object_1 = rocket_part_group()
+        # Background Variables
+        self.background_name = background_name
+        self.background_state = background_state
+        self.background = Image(f'{background_name}{background_state}.png')
 
-        self.debounce_threshold = 500
+        # Other variables
+        self.state = 0
+        self.name = name
+        self.debounce_threshold = 250
         self.last_update_time = 0
 
-    def add(self, title, pos, size):
-        self.label.append(title)
-        self.rec.append(pygame.Surface((size[0], size[1]), pygame.SRCALPHA))
-        self.rec[-1].fill((255, 0, 0, 0))
-        self.rec_rect.append(self.rec[-1].get_rect(topleft=(pos[0], pos[1])))
+    def state_flip(self):
+        if self.state == 1:
+            self.state = 0
+        elif self.state == 0:
+            self.state = 1
+        else:
+            raise ValueError("State should only be zero or one")
 
-    def draw(self, display_screen):
-        for i in range(len(self.rec)):
-            display_screen.blit(self.rec[i], self.rec_rect[i])
+    def set_image_position(self, x, y, loc='center'):
+        self.image.set_position(x, y, loc)
 
-    def click(self, mouse_pos, display_screen, current_look):
-        rocket_image = None
-        for i in range(len(self.label)):
-            if (self.rec_rect[i].collidepoint(mouse_pos) and (pygame.mouse.get_pressed()[0])) or (current_look == self.label[i]):
-                display_screen.blit(self.background, self.background_rect)
-                current_look = self.label[i]
-                current_time = pygame.time.get_ticks()
+    def set_background_position(self, x, y, loc='center'):
+        self.background.set_position(x, y, loc)
 
-                if current_look == 'Command Pod':
-                    mk1 = pygame.image.load('graphics/spites/commander_pod.png').convert_alpha()
-                    mk1_rec = mk1.get_rect(topleft=(77, 85))
-                    mk2 = pygame.image.load('graphics/part_holder.png').convert_alpha()
-                    mk2_rec = mk2.get_rect(topleft=(70, 80))
-                    mk3 = pygame.image.load('graphics/part_holder.png').convert_alpha()
-                    mk3_rec = mk3.get_rect(topleft=(170, 80))
-                    # display_screen.blit(mk2, mk2_rec)
-                    # display_screen.blit(mk3, mk3_rec)
-                    # display_screen.blit(mk1, mk1_rec)
-                    if current_time - self.last_update_time > self.debounce_threshold:
-                        if (mk1_rec.collidepoint(mouse_pos) and (pygame.mouse.get_pressed()[0])):
-                            mk1_rec = mk1.get_rect(topleft=(80, 80))
-                            self.object_1.add('graphics/spites/commander_pod.png', mk1_rec, mk1_prop, 'CMD')
-                            self.last_update_time = current_time
-                elif current_look == 'Fuel Tank':
-                    mk1 = pygame.image.load('graphics/spites/small_fuel_tank.png').convert_alpha()
-                    mk1_rec = mk1.get_rect(topleft=(80, 80))
-                    display_screen.blit(mk1, mk1_rec)
-                    if current_time - self.last_update_time > self.debounce_threshold:
-                        if (mk1_rec.collidepoint(mouse_pos) and (pygame.mouse.get_pressed()[0])):
-                            self.object_1.add('graphics/spites/small_fuel_tank.png', mk1_rec, fuel_tank_prop, 'FUEL')
-                            self.last_update_time = current_time
+    def set_position(self, x, y, loc='center'):
+        self.set_image_position(x, y, loc)
+        self.set_background_position(x, y, loc)
 
-                elif current_look == 'Rocket Engine':
-                    mk1 = pygame.image.load('graphics/spites/small_rocket_engine.png').convert_alpha()
-                    mk1_rec = mk1.get_rect(topleft=(80, 80))
-                    display_screen.blit(mk1, mk1_rec)
-                    if current_time - self.last_update_time > self.debounce_threshold:
-                        if (mk1_rec.collidepoint(mouse_pos) and (pygame.mouse.get_pressed()[0])):
-                            self.object_1.add('graphics/spites/small_rocket_engine.png', mk1_rec, rocket_engine_prop, 'ENG')
-                            self.last_update_time = current_time
+    def set_image_relative_position(self, x, y):
+        temp_x = self.image.rect.center[0]
+        temp_y = self.image.rect.center[1]
+        self.image.set_position(x + temp_x, y + temp_y)
 
-                elif current_look == 'Controls':
-                    mk1 = pygame.image.load('graphics/spites/decoupler.png').convert_alpha()
-                    mk1_rec = mk1.get_rect(topleft=(80, 80))
-                    display_screen.blit(mk1, mk1_rec)
-                    if current_time - self.last_update_time > self.debounce_threshold:
-                        if (mk1_rec.collidepoint(mouse_pos) and (pygame.mouse.get_pressed()[0])):
-                            self.object_1.add('graphics/spites/decoupler.png', mk1_rec, decoupler_prop, 'DECOUPLER')
-                            self.last_update_time = current_time
+    def set_image_state(self, state):
+        self.image_state = state
+        self.image.set_image(f'{self.image_name}{self.image_state}.png')
 
-                    mk2 = pygame.image.load('graphics/spites/heat_shield.png').convert_alpha()
-                    mk2_rec = mk2.get_rect(topleft=(80 + 100, 80))
-                    display_screen.blit(mk2, mk2_rec)
-                    if current_time - self.last_update_time > self.debounce_threshold:
-                        if (mk2_rec.collidepoint(mouse_pos) and (pygame.mouse.get_pressed()[0])):
-                            self.object_1.add('graphics/spites/heat_shield.png', mk2_rec, heat_shield_prop, 'HEAT')
-                            self.last_update_time = current_time
+    def set_background_state(self, state):
+        self.background_state = state
+        self.background.set_image(f'{self.background_name}{self.background_state}.png')
 
-                elif current_look == 'Miscellaneous':
-                    mk1 = pygame.image.load('graphics/spites/parachute.png').convert_alpha()
-                    mk1_rec = mk1.get_rect(topleft=(80, 80))
-                    display_screen.blit(mk1, mk1_rec)
-                    if current_time - self.last_update_time > self.debounce_threshold:
-                        if (mk1_rec.collidepoint(mouse_pos) and (pygame.mouse.get_pressed()[0])):
-                            self.object_1.add('graphics/spites/parachute.png', mk1_rec, parachute_prop, 'CHUTES')
-                            self.last_update_time = current_time
+    def set_image_scale_bounds(self, min, max):
+        self.image.scale.set_bounds(min, max)
 
-                elif current_look == 'Launch':
-                    rocket_image = self.object_1
+    def set_image_scale_speed(self, speed):
+        self.image.scale.set_speed(speed)
 
-        self.object_1.update(display_screen)
+    def set_bg_scale_bounds(self, min, max):
+        self.background.scale.set_bounds(min, max)
 
-        return current_look, rocket_image
+    def set_state(self, state):
+        self.set_image_state(state)
+        self.set_background_state(state)
 
-class SurroundingImageButton2(pygame.sprite.Sprite):
-    def __init__(self, image_name, surrounding_image_name, name):
-        super().__init__()
-        # Image and Surrounding Image Variables
-        self.surrounding_state = 'low'
-        self.image_name = image_name
-        self.surrounding_image_name = surrounding_image_name
+    def check_for_hover(self, mouse_position):
+        local_x = mouse_position[0] - self.background.rect.x
+        local_y = mouse_position[1] - self.background.rect.y
+        if self.background.rect.collidepoint(mouse_position[0], mouse_position[1]):
+            if self.background.mask.get_at((local_x, local_y)):
+                return True
+        return False
 
-        # Images Rect for Image
-        self.og_image = pygame.image.load(f'{image_name}.png').convert_alpha()
-        self.image = self.og_image
-        self.rect = self.image.get_rect(center=(0, 0))
+    def check_for_debounce(self):
+        current_time = pygame.time.get_ticks()
+        if (current_time - self.last_update_time > self.debounce_threshold):
+            self.last_update_time = current_time
+            return True
+        return False
 
-        # Images Rect for Background
-        self.og_bg_image = pygame.image.load(f'{surrounding_image_name}{self.surrounding_state}.png').convert_alpha()
-        self.bg_image = self.og_bg_image
-        self.bg_rect = self.bg_image.get_rect(center=(0, 0))
-        self.bg_mask = pygame.mask.from_surface(self.bg_image)
+    @abstractmethod
+    def draw(self, display_surface, mouse_position):
+        pass
 
-        # Scale variables for Image
-        self.og_image_width = self.rect.width
-        self.og_image_height = self.rect.height
-        self.scale_image = 1.0
-        self.scale_image_min = 0.5
-        self.scale_image_max = 1.5
-        self.scale_image_direction = -1
-        self.scale_image_speed = 0.1
+class SubCategoryButton(VABButton):
+    def __init__(self, image_name, background_name, name):
+        super().__init__(image_name, background_name, name, background_state='low')
 
-        # Scale variables for Background
-        self.og_bg_width = self.bg_rect.width
-        self.og_bg_height = self.bg_rect.height
-        self.scale_bg = 1.0
-        self.scale_bg_min = 0.5
-        self.scale_bg_max = 1.5
-
-        # Part Label
         with open('data/part_label.json', 'r') as file:
             data = json.load(file)
         self.data = data[name]
         if data[name]['type'] == "pod":
-            self.label = PodPartLabel(name, self.data)
+            self.label = PodVABPartInformationLabel(name, self.data)
         elif data[name]['type'] == "engine":
-            self.label = EnginePartLabel(name, self.data)
+            self.label = EngineVABPartInformationLabel(name, self.data)
         elif data[name]['type'] == "tank":
-            self.label = TankPartLabel(name, self.data)
+            self.label = TankVABPartInformationLabel(name, self.data)
         elif data[name]['type'] == "heat_shield":
-            self.label = HeatShieldPartLabel(name, self.data)
+            self.label = HeatShieldVABPartInformationLabel(name, self.data)
         elif data[name]['type'] == "decoupler":
-            self.label = DecouplerPartLabel(name, self.data)
+            self.label = DecouplerVABPartInformationLabel(name, self.data)
+        elif data[name]['type'] == "fins":
+            self.label = FinsVABPartInformationLabel(name, self.data)
         else:
-            self.label = PartLabel(name, self.data)
+            self.label = VABPartInformationLabel(name, self.data)
 
-        # Part
-        self.part = RocketPart(name)
-
-    def set_image_position(self, x, y):
-        self.rect.center = (x, y)
-        self.rect = self.image.get_rect(center=self.rect.center)
-
-    def set_image_relative_position(self, x, y):
-        temp_x = self.rect.center[0]
-        temp_y = self.rect.center[1]
-        self.rect.center = (x + temp_x, y + temp_y)
-        self.rect = self.image.get_rect(center=self.rect.center)
-
-    def set_background_position(self, x, y):
-        self.bg_rect.center = (x, y)
-        self.bg_rect = self.bg_image.get_rect(center=self.bg_rect.center)
-
-    def set_position(self, x, y):
-        self.rect.center = (x, y)
-        self.rect = self.image.get_rect(center=self.rect.center)
-        self.bg_rect.center = (x, y)
-        self.bg_rect = self.bg_image.get_rect(center=self.bg_rect.center)
-
-    def set_image_state(self, state):
-        self.image_state = state
-        self.og_image = pygame.image.load(f'{self.image_name}{self.image_state}.png').convert_alpha()
-
-    def set_image_scale_bounds(self, min, max):
-        self.scale_image_min = min
-        self.scale_image_max = max
-    
-    def set_image_scale_speed(self, speed):
-        self.scale_image_speed = speed
-
-    def set_background_state(self, state):
-        self.surrounding_state = state
-        self.og_bg_image = pygame.image.load(f'{self.surrounding_image_name}{self.surrounding_state}.png').convert_alpha()
-
-    def set_bg_scale_bounds(self, min, max):
-        self.scale_bg_min = min
-        self.scale_bg_max = max
-
-    def set_state(self, state):
-        self.set_image_state(state)
-        self.set_background_state(state)
-
-    def check_for_hover(self, mouse_position):
-        if self.bg_rect.collidepoint(mouse_position[0], mouse_position[1]):
-            local_x = mouse_position[0] - self.bg_rect.x
-            local_y = mouse_position[1] - self.bg_rect.y
-            if self.bg_mask.get_at((local_x, local_y)):
-                if self.surrounding_state == 'low':
-                    self.surrounding_state = 'high'
-                    self.og_bg_image = pygame.image.load(f'{self.surrounding_image_name}{self.surrounding_state}.png').convert_alpha()
-                if (self.scale_image <= self.scale_image_min) or (self.scale_image >= self.scale_image_max):
-                    self.scale_image_direction *= -1
-                self.scale_image += self.scale_image_direction*self.scale_image_speed
-
+    def draw(self, display_surface, mouse_position):
+        # if there is hover and change color based on hover
+        if self.check_for_hover(mouse_position):
+            if self.background_state == 'low':
+                self.background_state = 'high'
+                self.background.set_image(f'{self.background_name}{self.background_state}.png')
+            self.image.scale.update()
         else:
-            if self.surrounding_state == 'high':
-                self.surrounding_state = 'low'
-                self.og_bg_image = pygame.image.load(f'{self.surrounding_image_name}{self.surrounding_state}.png').convert_alpha()
-                self.scale_image = 1.0
+            if self.background_state == 'high':
+                self.background_state = 'low'
+                self.background.set_image(f'{self.background_name}{self.background_state}.png')
+                self.image.scale.current = 1.0
 
-    def check_for_input(self, mouse_position, group):
-        if self.bg_rect.collidepoint(mouse_position[0], mouse_position[1]):
-            local_x = mouse_position[0] - self.bg_rect.x
-            local_y = mouse_position[1] - self.bg_rect.y
-            if self.bg_mask.get_at((local_x, local_y)) and pygame.mouse.get_pressed()[0]:
-                group.add(self.part)
+        self.background.draw(display_surface)
+        self.image.draw(display_surface)
 
-    def update(self, mouse_position, group):
-        self.check_for_hover(mouse_position)
-        self.check_for_input(mouse_position, group)
-
-    def draw(self, display_surface):
-        self.image = pygame.transform.scale(self.og_image, (self.og_image_width * self.scale_image, self.og_image_height * self.scale_image))
-        self.rect = self.image.get_rect(center=self.rect.center)
-
-        self.bg_image = pygame.transform.scale(self.og_bg_image, (self.og_bg_width * self.scale_bg, self.og_bg_height * self.scale_bg))
-        self.bg_rect = self.bg_image.get_rect(center=self.bg_rect.center)
-
-        display_surface.blit(self.bg_image, self.bg_rect)
-        display_surface.blit(self.image, self.rect)
-
-    def draw_hover(self, display_surface):
-        mouse_position = pygame.mouse.get_pos()
-        if self.bg_rect.collidepoint(mouse_position[0], mouse_position[1]):
-            local_x = mouse_position[0] - self.bg_rect.x
-            local_y = mouse_position[1] - self.bg_rect.y
-            if self.bg_mask.get_at((local_x, local_y)):
-                self.label.draw(display_surface, mouse_position)
-
-class SurroundingImageButton(pygame.sprite.Sprite):
-    def __init__(self, image_name, surrounding_image_name, name):
-        super().__init__()
-        # Image and Surrounding Image Variables
-        self.image_state = 'low'
-        self.surrounding_state = 'low'
-        self.image_name = image_name
-        self.surrounding_image_name = surrounding_image_name
-        
-        # Images Rect for Image
-        self.og_image = pygame.image.load(f'{image_name}{self.image_state}.png').convert_alpha()
-        self.image = self.og_image
-        self.rect = self.image.get_rect(center=(0, 0))
-
-        # Images Rect for Background
-        self.og_bg_image = pygame.image.load(f'{surrounding_image_name}{self.surrounding_state}.png').convert_alpha()
-        self.bg_image = self.og_bg_image
-        self.bg_rect = self.bg_image.get_rect(center=(0, 0))
-        self.bg_mask = pygame.mask.from_surface(self.bg_image)
-
-        # Scale variables for Image
-        self.og_image_width = self.rect.width
-        self.og_image_height = self.rect.height
-        self.scale_image = 1.0
-
-        # Scale variables for Background
-        self.og_bg_width = self.bg_rect.width
-        self.og_bg_height = self.bg_rect.height
-        self.scale_bg = 1.0
-
-        self.parts = []
+class VABButtonWithLabel(VABButton):
+    def __init__(self, image_name, background_name, name, image_state='', background_state=''):
+        super().__init__(image_name, background_name, name, image_state=image_state, background_state=background_state)
         self.label = LabelFollower(name)
 
-    def set_image_position(self, x, y):
-        self.rect.center = (x, y)
-        self.rect = self.image.get_rect(center=self.rect.center)
+    def draw(self, display_surface, mouse_position):
+        self.background.draw(display_surface)
+        self.image.draw(display_surface)
 
-    def set_background_position(self, x, y):
-        self.bg_rect.center = (x, y)
-        self.bg_rect = self.bg_image.get_rect(center=self.bg_rect.center)
+class MoneySymmetryMenu():
+    def __init__(self, player):
+        file_location = 'graphics/ui/vab'
+        self.player = player
+        self.overlay = Image(f'{file_location}/money_and_symmetry.png', loc='bottomleft')
+        self.money_counter = TextBox(f"{self.player.money}", 'font/Pixeltype.ttf', '#6abe30', 35, 255)
+        self.weight_center = VABButtonWithLabel(f'{file_location}/weight', f'{file_location}/weight_bg_', 'Center of Mass', background_state='low')
+        self.thrust_center = VABButtonWithLabel(f'{file_location}/thruster', f'{file_location}/thruster_bg_', 'Thruster Force Center', background_state='low')
+        self.aero_center = VABButtonWithLabel(f'{file_location}/aerocenter', f'{file_location}/aerocenter_bg_', 'Aerodynamic Center', background_state='low')
+        self.symmetry = VABButtonWithLabel(f'{file_location}/symmetry_single', f'{file_location}/symmetry_bg_', 'Symmetry', background_state='low')
 
-    def set_position(self, x, y):
-        self.rect.center = (x, y)
-        self.rect = self.image.get_rect(center=self.rect.center)
-        self.bg_rect.center = (x, y)
-        self.bg_rect = self.bg_image.get_rect(center=self.bg_rect.center)
+        info = pygame.display.Info()
+        self.weight_center.set_position(0, info.current_h, loc='bottomleft')
+        self.thrust_center.set_position(0, info.current_h, loc='bottomleft')
+        self.aero_center.set_position(0, info.current_h, loc='bottomleft')
+        self.symmetry.set_position(0, info.current_h, loc='bottomleft')
+        self.money_counter.set_position_top_left(45, 655)
+        self.buttons = [self.weight_center, self.thrust_center,
+                        self.aero_center]
 
-    def set_image_state(self, state):
-        self.image_state = state
-        self.og_image = pygame.image.load(f'{self.image_name}{self.image_state}.png').convert_alpha()
+        # Debounce Variables
+        self.last_press_time = [0]
+        self.debounce_time = 250
 
-    def set_background_state(self, state):
-        self.surrounding_state = state
-        self.og_bg_image = pygame.image.load(f'{self.surrounding_image_name}{self.surrounding_state}.png').convert_alpha()
-
-    def set_state(self, state):
-        self.set_image_state(state)
-        self.set_background_state(state)
-
-    def add_parts(self, parts):
-        self.parts.append(parts)
-
-    def check_for_hover(self, mouse_position):
-        if self.bg_rect.collidepoint(mouse_position[0], mouse_position[1]):
-            local_x = mouse_position[0] - self.bg_rect.x
-            local_y = mouse_position[1] - self.bg_rect.y
-            if self.bg_mask.get_at((local_x, local_y)):
-                if self.surrounding_state == 'low':
-                    self.surrounding_state = 'med'
-                    self.og_bg_image = pygame.image.load(f'{self.surrounding_image_name}{self.surrounding_state}.png').convert_alpha()
+    def draw(self, display_surface, mouse_position, mouse_button):
+        self.overlay.draw(display_surface)
+        for button in self.buttons:
+            if PygameUtils.check_for_input(mouse_button, mouse_position, button.background, self.last_press_time, self.debounce_time):
+                button.state_flip()
+            elif PygameUtils.check_for_hover(mouse_position, button.background):
+                button.set_background_state('med')
+            else:
+                if button.state == 1:
+                    button.set_background_state('high')
+                else:
+                    button.set_background_state('low')
+            button.draw(display_surface, mouse_position)
+        if PygameUtils.check_for_input(mouse_button, mouse_position, self.symmetry.background, self.last_press_time, self.debounce_time):
+            file_location = 'graphics/ui/vab'
+            if self.symmetry.image.image_file == f'{file_location}/symmetry_single.png':
+                self.symmetry.image.set_image(f'{file_location}/symmetry_two.png')
+            else:
+                self.symmetry.image.set_image(f'{file_location}/symmetry_single.png')
+        elif PygameUtils.check_for_hover(mouse_position, self.symmetry.background):
+            self.symmetry.set_background_state('med')
         else:
-            if self.surrounding_state == 'med':
-                self.surrounding_state = 'low'
-                self.og_bg_image = pygame.image.load(f'{self.surrounding_image_name}{self.surrounding_state}.png').convert_alpha()
+            self.symmetry.set_background_state('low')
+        self.symmetry.draw(display_surface, mouse_position)
+        self.money_counter.update_text(f"{self.player.money}")
+        self.money_counter.draw(display_surface)
 
-    def check_for_input(self, mouse_position):
-        if self.bg_rect.collidepoint(mouse_position[0], mouse_position[1]):
-            local_x = mouse_position[0] - self.bg_rect.x
-            local_y = mouse_position[1] - self.bg_rect.y
-            if self.bg_mask.get_at((local_x, local_y)) and pygame.mouse.get_pressed()[0]:
-                self.surrounding_state = 'high'
-                self.og_bg_image = pygame.image.load(f'{self.surrounding_image_name}{self.surrounding_state}.png').convert_alpha()
-                self.image_state = 'high'
-                self.og_image = pygame.image.load(f'{self.image_name}{self.image_state}.png').convert_alpha()
-    
-    def update(self, mouse_position):
-        self.check_for_hover(mouse_position)
-        self.check_for_input(mouse_position)
+class SideCategoryButton(VABButton):
+    def __init__(self, image_name, background_name, name):
+        super().__init__(image_name, background_name, name, image_state='low', background_state='low')
+        self.label = LabelFollower(name)
 
-    def update_parts(self, mouse_position, display_surface, group):
-        if self.image_state == 'high':
-            # Draw the part boxes
-            for part in self.parts:
-                part.update(mouse_position, group)
-                part.draw(display_surface)
+    def draw(self, display_surface, mouse_position):
+        # If there is hover and change color based on hover
+        if self.check_for_hover(mouse_position):
+            if self.background_state == 'low':
+                self.background_state = 'med'
+                self.background.set_image(f'{self.background_name}{self.background_state}.png')
+        else:
+            if self.background_state == 'med':
+                self.background_state = 'low'
+                self.background.set_image(f'{self.background_name}{self.background_state}.png')
 
-            # Draw the label if its hovered over
-            for part in self.parts:
-                part.draw_hover(display_surface)
-
-    def draw_label(self, mouse_position, display_surface):
-        # This is for the label
-        if self.bg_rect.collidepoint(mouse_position[0], mouse_position[1]):
-            local_x = mouse_position[0] - self.bg_rect.x
-            local_y = mouse_position[1] - self.bg_rect.y
-            if self.bg_mask.get_at((local_x, local_y)):
-                self.label.draw(display_surface, mouse_position)
-
-    def draw(self, display_surface):
-        self.image = pygame.transform.scale(self.og_image, (self.og_image_width * self.scale_image, self.og_image_height * self.scale_image))
-        self.rect = self.image.get_rect(center=self.rect.center)
-
-        self.bg_image = pygame.transform.scale(self.og_bg_image, (self.og_bg_width * self.scale_bg, self.og_bg_height * self.scale_bg))
-        self.bg_rect = self.bg_image.get_rect(center=self.bg_rect.center)
-
-        display_surface.blit(self.bg_image, self.bg_rect)
-        display_surface.blit(self.image, self.rect)
+        self.background.draw(display_surface)
+        self.image.draw(display_surface)
 
 class NoSurroundingButton():
     def __init__(self, text, font, size):
@@ -587,7 +427,7 @@ class NoSurroundingButton():
     def set_position(self, x, y):
         self.font_rect.center = (x, y)
         self.font_rect = self.font_surface.get_rect(center=self.font_rect.center)
-    
+
     def check_for_input(self, mouse_position, actions):
         if (self.font_rect.collidepoint(mouse_position) and pygame.mouse.get_pressed()[0]) and mouse_position[0] in range(self.font_rect.left, self.font_rect.right) and (mouse_position[1] in range(self.font_rect.top, self.font_rect.bottom)):
             for act in actions:
@@ -604,315 +444,96 @@ class NoSurroundingButton():
         self.check_for_input(mouse_position, actions)
 
 
-class PartLabel():
-    def __init__(self, text, data):
-        # Big background
-        self.background = pygame.Surface((265, 230), pygame.SRCALPHA) # Create a surface with per-pixel alpha
-        self.background.fill((100, 100, 100, 255))
-        self.background_rect = self.background.get_rect(topleft=(0, 0))
+class Image(pygame.sprite.Sprite):
+    def __init__(self, image_file, loc='center'):
+        super().__init__()
+        # Load the image and set up initial properties
+        self.image_file = image_file
+        self.og_image = pygame.image.load(image_file).convert_alpha()
+        self.image = self.og_image
+        self.mask = pygame.mask.from_surface(self.image)
+        self.set_location(loc)
 
-        # Setting up image
-        self.image = pygame.image.load(data['image']).convert_alpha()
-        self.rect = self.image.get_rect(center=(0, 0))
+        # Dimension Variables
+        self.og_width = self.rect.width
+        self.og_height = self.rect.height
 
-        # Setting up image background
-        self.image_background = pygame.Surface((75, 75), pygame.SRCALPHA) # Create a surface with per-pixel alpha
-        self.image_background.fill((50, 50, 50, 255))
-        self.image_background_rect = self.image_background.get_rect(topleft=(0, 0))
+        # Scaling Variables
+        self.scale = ImageScale()
+        self.scale.set_bounds(0.5, 0.5)
 
-        # Setting up key info
-        self.info_background = pygame.Surface((175, 75), pygame.SRCALPHA) # Create a surface with per-pixel alpha
-        self.info_background.fill((50, 50, 50, 255))
-        self.info_background_rect = self.info_background.get_rect(topleft=(0, 0))
+    def set_location(self, loc):
+        if loc == 'center':
+            self.rect = self.image.get_rect(center=(0, 0))
+        elif loc == 'topleft':
+            self.rect = self.image.get_rect(topleft=(0, 0))
+        elif loc == 'bottomleft':
+            info = pygame.display.Info()
+            self.rect = self.image.get_rect(bottomleft=(0, info.current_h))
+        else:
+            raise ValueError("Invalid location specified. Use 'center' or 'topleft' or 'bottomleft")
 
-        # Setting up the info text
-        self.info_text_1 = LabelText(f"Mass: {data['mass']} t", 'font/Pixeltype.ttf', '#4dfed1', 15)
-        self.info_text_2 = LabelText(f"Tolerance: {data['Tolerance Impact']} m/s Impact", 'font/Pixeltype.ttf', '#4dfed1', 15)
-        self.info_text_3 = LabelText(f"Tolerance: {data['Tolerance Pressure']} kPA Pressure", 'font/Pixeltype.ttf', '#4dfed1', 15)
-        self.info_text_4 = LabelText(f"Max. Temp. Skin: {data['Max Temperature']} K", 'font/Pixeltype.ttf', '#4dfed1', 15)
+    def set_position(self, x, y, loc='center'):
+        if loc == 'center':
+            self.rect.center = (x, y)
+        elif loc == 'topleft':
+            self.rect.topleft = (x, y)
+        elif loc == 'bottomleft':
+            self.rect.bottomleft = (x, y)
+        else:
+            raise ValueError("Invalid location specified. Use 'center' or 'topleft' or 'bottomleft")
 
-        # Setting up manufacturer background
-        self.manuf_background = pygame.Surface((255, 30), pygame.SRCALPHA) # Create a surface with per-pixel alpha
-        self.manuf_background.fill((150, 150, 150, 255))
-        self.manuf_background_rect = self.manuf_background.get_rect(topleft=(0, 0))
+    def set_image(self, image_file):
+        self.og_image = pygame.image.load(image_file).convert_alpha()
+        self.image = self.og_image
+        self.image_file = image_file
 
-        # Setting up manufacturer text
-        self.manuf_text_1 = LabelText(f"Manufacturer:", 'font/Pixeltype.ttf', '#4dfed1', 15)
-        self.manuf_text_2 = LabelText(f"{data['Manufacturer']}", 'font/Pixeltype.ttf', '#4dfed1', 15)
+    def draw(self, display_surface):
+        scaled_width = int(self.og_width * self.scale.current)
+        scaled_height = int(self.og_height * self.scale.current)
 
-        # Setting up description background
-        self.description_background = pygame.Surface((255, 80), pygame.SRCALPHA) # Create a surface with per-pixel alpha
-        self.description_background.fill((50, 50, 50, 255))
-        self.description_background_rect = self.description_background.get_rect(topleft=(0, 0))
-
-        # Setting up description text
-        self.description_text_1 = TextBox(f"{data['Description']}", 'font/Pixeltype.ttf', '#93c47d', 15, 255)
-
-        # Setting up cost text
-        self.cost_text = TextBox(f"Cost: ${data['Cost']}", 'font/Pixeltype.ttf', '#f4fc03', 15, 255)
-
-        # Texts Setup
-        self.text_title = LabelText(text, 'font/Pixeltype.ttf', '#f4fc03', 20)
-
-    def set_position(self, x, y):
-        self.background_rect.topleft = (x + 10, y + 10)
-        self.background_rect = self.background.get_rect(topleft=self.background_rect.topleft)
-
-        self.image_background_rect.topleft = (self.background_rect.topleft[0] + 5, self.background_rect.topleft[1] + 20)
-        self.image_background_rect = self.image_background.get_rect(topleft=self.image_background_rect.topleft)
-
-        self.rect.center = (self.image_background_rect.center[0], self.image_background_rect.center[1])
+        self.image = pygame.transform.scale(self.og_image, (scaled_width, scaled_height))
         self.rect = self.image.get_rect(center=self.rect.center)
-
-        self.info_background_rect.topleft = (self.image_background_rect.topright[0] + 5, self.image_background_rect.topright[1])
-        self.info_background_rect = self.info_background.get_rect(topleft=self.info_background_rect.topleft)
-
-        self.manuf_background_rect.topleft = (self.image_background_rect.bottomleft[0], self.image_background_rect.bottomleft[1] + 5)
-        self.manuf_background_rect = self.manuf_background.get_rect(topleft=self.manuf_background_rect.topleft)
-
-        self.description_background_rect.topleft = (self.manuf_background_rect.bottomleft[0], self.manuf_background_rect.bottomleft[1])
-        self.description_background_rect = self.description_background.get_rect(topleft=self.description_background_rect.topleft)
-        
-        self.info_text_1.set_position_top_left(self.info_background_rect.topleft[0] + 5, self.info_background_rect.topleft[1] + 5)
-        self.info_text_2.set_position_top_left(self.info_background_rect.topleft[0] + 5, self.info_text_1.rect.topleft[1] + 10)
-        self.info_text_3.set_position_top_left(self.info_background_rect.topleft[0] + 5, self.info_text_2.rect.topleft[1] + 10)
-        self.info_text_4.set_position_top_left(self.info_background_rect.topleft[0] + 5, self.info_text_3.rect.topleft[1] + 10)
-
-        self.manuf_text_1.set_position_top_left(self.manuf_background_rect.topleft[0] + 5, self.manuf_background_rect.topleft[1] + 5)
-        self.manuf_text_2.set_position_top_left(self.manuf_background_rect.topleft[0] + 5, self.manuf_text_1.rect.topleft[1] + 10)
-
-        self.description_text_1.set_position_top_left(self.description_background_rect.topleft[0] + 5, self.description_background_rect.topleft[1] + 5)
-
-        self.cost_text.set_position_top_left(self.description_background_rect.bottomleft[0] + 5, self.description_background_rect.bottomleft[1] + 5)
-
-        self.text_title.set_position_top_left(self.background_rect.topleft[0] + 5, self.background_rect.topleft[1] + 5)
-
-    def draw(self, display_surface, mouse_position):
-        local_x = mouse_position[0]
-        local_y = mouse_position[1]
-        self.set_position(local_x, local_y)
-        display_surface.blit(self.background, self.background_rect)
-        display_surface.blit(self.image_background, self.image_background_rect)
         display_surface.blit(self.image, self.rect)
-        display_surface.blit(self.info_background, self.info_background_rect)
-        display_surface.blit(self.manuf_background, self.manuf_background_rect)
-        display_surface.blit(self.description_background, self.description_background_rect)
-        self.info_text_1.draw(display_surface)
-        self.info_text_2.draw(display_surface)
-        self.info_text_3.draw(display_surface)
-        self.info_text_4.draw(display_surface)
-        self.manuf_text_1.draw(display_surface)
-        self.manuf_text_2.draw(display_surface)
-        self.description_text_1.draw(display_surface)
-        self.cost_text.draw(display_surface)
-        self.text_title.draw(display_surface)
 
-class PodPartLabel(PartLabel):
-    def __init__(self, text, data):
-        super().__init__(text, data)
-        self.info_text_5 = LabelText(f"Crew capacity: {data['Crew Capacity']}", 'font/Pixeltype.ttf', '#4dfed1', 15)
-        self.info_text_6 = LabelText(f"Electric Charge: {data['Electric Charge']}", 'font/Pixeltype.ttf', '#93c47d', 15)
-        self.info_text_7 = LabelText(f"Monopropellant: {data['Monopropellant']}", 'font/Pixeltype.ttf', '#93c47d', 15)
+class SurfaceImage(Image):
+    def __init__(self, size=(200,200), color=(70, 70, 70, 200), loc='center'):
+        self.og_image = pygame.Surface(size, pygame.SRCALPHA)
+        self.og_image.fill(color)
+        self.image = self.og_image
+        self.mask = pygame.mask.from_surface(self.image)
+        self.set_location(loc)
 
-    def set_position(self, x, y):
-        # Do parent set_position
-        super().set_position(x, y)
-        self.info_text_5.set_position_top_left(self.info_background_rect.topleft[0] + 5, self.info_text_4.rect.topleft[1] + 10)
-        self.info_text_6.set_position_top_left(self.info_background_rect.topleft[0] + 5, self.info_text_5.rect.topleft[1] + 10)
-        self.info_text_7.set_position_top_left(self.info_background_rect.topleft[0] + 5, self.info_text_6.rect.topleft[1] + 10)
+        # Dimension Variables
+        self.og_width = self.rect.width
+        self.og_height = self.rect.height
 
-    def draw(self, display_surface, mouse_position):
-        # Do parent draw
-        super().draw(display_surface, mouse_position)
-        self.info_text_5.draw(display_surface)
-        self.info_text_6.draw(display_surface)
-        self.info_text_7.draw(display_surface)
+        # Scaling Variables
+        self.scale = ImageScale()
+        self.scale.set_bounds(0.5, 0.5)
 
-class EnginePartLabel(PartLabel):
-    def __init__(self, text, data):
-        super().__init__(text, data)
-        self.info_text_5 = LabelText(f"Thrust (ASL): {data['Thrust (ASL)']} kN", 'font/Pixeltype.ttf', '#93c47d', 15)
-        self.info_text_6 = LabelText(f"Thrust (Vac.): {data['Thrust (Vac)']} kN", 'font/Pixeltype.ttf', '#93c47d', 15)
+class ImageScale():
+    def __init__(self):
+        self.current = 1.0
+        self.min = 0.5
+        self.max = 1.5
+        self.direction = 1
+        self.speed = 0.1
 
-    def set_position(self, x, y):
-        # Do parent set_position
-        super().set_position(x, y)
-        self.info_text_5.set_position_top_left(self.info_background_rect.topleft[0] + 5, self.info_text_4.rect.topleft[1] + 20)
-        self.info_text_6.set_position_top_left(self.info_background_rect.topleft[0] + 5, self.info_text_5.rect.topleft[1] + 10)
+    def set_speed(self, speed):
+        self.speed = speed
 
-    def draw(self, display_surface, mouse_position):
-        # Do parent draw
-        super().draw(display_surface, mouse_position)
-        self.info_text_5.draw(display_surface)
-        self.info_text_6.draw(display_surface)
+    def set_direction(self, direction):
+        self.direction = direction
 
-class TankPartLabel(PartLabel):
-    def __init__(self, text, data):
-        super().__init__(text, data)
-        self.info_text_5 = LabelText(f"Liquid Fuel: {data['Liquid Fuel']}", 'font/Pixeltype.ttf', '#93c47d', 15)
-        self.info_text_6 = LabelText(f"Oxidizer: {data['Oxidizer']}", 'font/Pixeltype.ttf', '#93c47d', 15)
+    def change_direction(self):
+        self.direction *= -1
 
-    def set_position(self, x, y):
-        # Do parent set_position
-        super().set_position(x, y)
-        self.info_text_5.set_position_top_left(self.info_background_rect.topleft[0] + 5, self.info_text_4.rect.topleft[1] + 20)
-        self.info_text_6.set_position_top_left(self.info_background_rect.topleft[0] + 5, self.info_text_5.rect.topleft[1] + 10)
+    def set_bounds(self, min, max):
+        self.min = min
+        self.max = max
 
-    def draw(self, display_surface, mouse_position):
-        # Do parent draw
-        super().draw(display_surface, mouse_position)
-        self.info_text_5.draw(display_surface)
-        self.info_text_6.draw(display_surface)
-
-class HeatShieldPartLabel(PartLabel):
-    def __init__(self, text, data):
-        super().__init__(text, data)
-        self.info_text_5 = LabelText(f"Ejection Force: {data['Ejection Force']}", 'font/Pixeltype.ttf', '#93c47d', 15)
-        self.info_text_6 = LabelText(f"Ablator: {data['Ablator']}", 'font/Pixeltype.ttf', '#93c47d', 15)
-
-    def set_position(self, x, y):
-        # Do parent set_position
-        super().set_position(x, y)
-        self.info_text_5.set_position_top_left(self.info_background_rect.topleft[0] + 5, self.info_text_4.rect.topleft[1] + 20)
-        self.info_text_6.set_position_top_left(self.info_background_rect.topleft[0] + 5, self.info_text_5.rect.topleft[1] + 10)
-
-    def draw(self, display_surface, mouse_position):
-        # Do parent draw
-        super().draw(display_surface, mouse_position)
-        self.info_text_5.draw(display_surface)
-        self.info_text_6.draw(display_surface)
-
-class DecouplerPartLabel(PartLabel):
-    def __init__(self, text, data):
-        super().__init__(text, data)
-        self.info_text_5 = LabelText(f"Ejection Force: {data['Ejection Force']}", 'font/Pixeltype.ttf', '#93c47d', 15)
-
-    def set_position(self, x, y):
-        # Do parent set_position
-        super().set_position(x, y)
-        self.info_text_5.set_position_top_left(self.info_background_rect.topleft[0] + 5, self.info_text_4.rect.topleft[1] + 20)
-
-    def draw(self, display_surface, mouse_position):
-        # Do parent draw
-        super().draw(display_surface, mouse_position)
-        self.info_text_5.draw(display_surface)
-
-class LabelFollower():
-    def __init__(self, text):
-        # Setting up the middle part
-        self.background = pygame.Surface((len(text) * 8, 20), pygame.SRCALPHA)  # Create a surface with per-pixel alpha
-        self.background.fill((50, 50, 50, 255))
-        self.background_rect = self.background.get_rect(topleft=(0, 0))
-
-        # Setting up the outside part
-        self.foreground = pygame.Surface((len(text) * 8 + 5, 20 + 5), pygame.SRCALPHA)  # Create a surface with per-pixel alpha
-        self.foreground.fill((200, 200, 200, 255))
-        self.foreground_rect = self.foreground.get_rect(topleft=(0, 0))
-
-        self.foreground_1 = pygame.Surface((len(text) * 8 + 2, 20 + 2), pygame.SRCALPHA)  # Create a surface with per-pixel alpha
-        self.foreground_1.fill((10, 10, 10, 255))
-        self.foreground_1_rect = self.foreground_1.get_rect(topleft=(0, 0))
-
-        self.foreground_2 = pygame.Surface((len(text) * 8 + 7, 20 + 7), pygame.SRCALPHA)  # Create a surface with per-pixel alpha
-        self.foreground_2.fill((10, 10, 10, 255))
-        self.foreground_2_rect = self.foreground_2.get_rect(topleft=(0, 0))
-
-        # Texts
-        self.color = '#f4fc03'     # Default to yellow
-        font = 'font/Pixeltype.ttf'
-        self.font = pygame.font.Font(font, 20)
-        self.font_surface = self.font.render(text, False, self.color)
-        self.font_rect = self.font_surface.get_rect(center=(500, 350))
-        self.text = text
-
-    def set_position(self, x, y):
-        self.background_rect.center = (x + (self.background_rect.width/2 + 10), y + (self.background_rect.height))
-        self.background_rect = self.background.get_rect(center=self.background_rect.center)
-
-        self.foreground_rect.center = (x + (self.background_rect.width/2 + 10), y + (self.background_rect.height))
-        self.foreground_rect = self.foreground.get_rect(center=self.foreground_rect.center)
-
-        self.foreground_1_rect.center = (x + (self.background_rect.width/2 + 10), y + (self.background_rect.height))
-        self.foreground_1_rect = self.foreground_1.get_rect(center=self.foreground_1_rect.center)
-
-        self.foreground_2_rect.center = (x + (self.background_rect.width/2 + 10), y + (self.background_rect.height))
-        self.foreground_2_rect = self.foreground_2.get_rect(center=self.foreground_2_rect.center)
-
-        self.font_rect.center = (x + (self.background_rect.width/2 + 10), y + (self.background_rect.height))
-        self.font_rect = self.font_surface.get_rect(center=self.font_rect.center)
-
-
-    def draw(self, display_surface, mouse_position):
-        local_x = mouse_position[0]
-        local_y = mouse_position[1]
-        self.set_position(local_x, local_y)
-        display_surface.blit(self.foreground_2, self.foreground_2_rect)
-        display_surface.blit(self.foreground, self.foreground_rect)
-        display_surface.blit(self.foreground_1, self.foreground_1_rect)
-        display_surface.blit(self.background, self.background_rect)
-        display_surface.blit(self.font_surface, self.font_rect)
-
-class LabelText():
-    def __init__(self, text, font_file, color, size):
-        self.color = color
-        font = pygame.font.Font(font_file, size)
-        self.surface = font.render(text, False, color)
-        self.rect = self.surface.get_rect(center=(0, 0))
-        self.text = text
-
-    def set_position_top_left(self, x, y):
-        self.rect.topleft = (x, y)
-        self.rect = self.surface.get_rect(topleft=self.rect.topleft)
-
-    def set_position(self, x, y):
-        self.rect.center = (x, y)
-        self.rect = self.surface.get_rect(center=self.rect.center)
-
-    def draw(self, display_surface):
-        display_surface.blit(self.surface, self.rect)
-
-class TextBox():
-    def __init__(self, text, font_file, color, text_size, width):
-        self.color = color
-        font = pygame.font.Font(font_file, text_size)
-        self.font = font
-        self.wrapped_text = self.wrap_text(text, width)
-        self.surface = font.render(self.wrapped_text, False, color)
-        self.rect = self.surface.get_rect(center=(0, 0))
-        self.text = text
-        self.width = width
-
-    def set_position_top_left(self, x, y):
-        self.rect.topleft = (x, y)
-        self.rect = self.surface.get_rect(topleft=self.rect.topleft)
-
-    def set_position(self, x, y):
-        self.rect.center = (x, y)
-        self.rect = self.surface.get_rect(center=self.rect.center)
-
-    def wrap_text(self, text, width):
-        # Split text into lines based on the width of the box
-        words = text.split(' ')
-        lines = []
-        current_line = ''
-
-        for word in words:
-            test_line = current_line + word + ' '
-            if self.font.size(test_line)[0] <= width:
-                current_line = test_line
-            else:
-                current_line = current_line + '\n'
-                lines.append(current_line)
-                current_line = word + ' '
-
-        current_line = current_line + '\n'
-        lines.append(current_line)
-        return ''.join(lines)
-
-    def draw(self, display_surface):
-        y_offset = self.rect.topleft[1]
-        lines = self.wrapped_text.split('\n')
-        for line in lines:
-            text_surface = self.font.render(line, False, self.color)
-            display_surface.blit(text_surface, (self.rect.topleft[0], y_offset))
-            y_offset += self.font.get_height()
+    def update(self):
+        if (self.current <= self.min) or (self.current >= self.max):
+            self.change_direction()
+        self.current += self.direction * self.speed
