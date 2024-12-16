@@ -103,7 +103,7 @@ class Matrix4:
             [e, f, g, h],  # Second row
             [i, j, k, l]   # Third row
         ]
-    
+
     def __mul__(self, other):
         if isinstance(other, Vector3):
             # Transform the given vector by this matrix
@@ -132,7 +132,7 @@ class Matrix4:
             return result
         else:
             raise ValueError("Incompatible multiplication")
-    
+
     # Gets a vector representing one axis in the matrix
     # The column to return
     def get_axis_vector(self, i):
@@ -575,6 +575,13 @@ class Vector3:
     def __rmul__(self, other):
         return self.__mul__(other)  # Allow other * Vector3 as well
 
+    def __eq__(self, other):
+        if self is other:
+            return True
+        if not isinstance(other, Vector3):
+            return False
+        return (self.x == other.x) and (self.y == other.y) and (self.z == other.z)
+
     def vectorProduct(self, vector):
         # Calculates and returns the vector product of this vector
         # with the given vector
@@ -586,7 +593,7 @@ class Vector3:
         # Calculates the return of component-wise product of this
         # vector with the given vector
         return Vector3(self.x * vector.x, self.y * vector.y, self.z * vector.z)
-    
+
     def componentProductUpdate(self, vector):
         # Perform a component-wise product with the given vector and
         # sets this vector to its result
@@ -597,7 +604,7 @@ class Vector3:
     def scalarProduct(self, vector):
         # Calculates and returns the scalar product of this vector
         # with the given vector
-        return self.x*vector.x + self.y*vector.y + self.z*vector.z 
+        return self.x*vector.x + self.y*vector.y + self.z*vector.z
 
     def invert(self):
         # Flip all the components of the vector
@@ -608,11 +615,11 @@ class Vector3:
     def magnitude(self):
         # Gets the magnitude of this vector
         return m.sqrt(self.x**2 + self.y**2 + self.z**2 )
-    
+
     def square_magnitude(self):
         # Gets the squared magnitude of this vector
         return self.x**2 + self.y**2 + self.z**2
-    
+
     def trim(self, size):
         # Limits the size of the vector to the given maximum
         if (self.square_magnitude() > (size*size)):
@@ -646,3 +653,12 @@ class Vector3:
         result = Vector3(self.x, self.y, self.z)
         result.normalize()
         return result
+
+    def set_x(self, x):
+        self.x = x
+
+    def set_y(self, y):
+        self.y = y
+
+    def set_z(self, z):
+        self.z = z

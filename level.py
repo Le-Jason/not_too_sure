@@ -138,6 +138,7 @@ class VAB(BaseLevels):
         # Set variables for each level
         self.length_per_pixel = self.system_info['length_per_pixel']
         self.player = player
+        self.start_money = self.player.money
 
         # Set Background
         self.vab_bg = Main_Menu_Objects('graphics/vab_bg.png')
@@ -268,6 +269,7 @@ class VAB(BaseLevels):
                                     new_part.being_moved = True
                                     self.roaming_parts.add(new_part)
                                     touched_recently = True
+                                    self.rocket.calculate_money()
                         else:
                             hover_node = PygameUtils.check_for_hover_tree(mouse_pos, self.rocket)
                             if hover_node is not None:
@@ -276,6 +278,7 @@ class VAB(BaseLevels):
                                 new_part.being_moved = True
                                 self.roaming_parts.add(new_part)
                                 touched_recently = True
+                                self.rocket.calculate_money()
                     # If the current itemed is held
                     if (len(self.roaming_parts) > 0):
                         if (self.roaming_parts.sprites()[-1].being_moved == True):
@@ -290,12 +293,15 @@ class VAB(BaseLevels):
                                     self.rocket = RocketNode(self.roaming_parts.sprites()[-1].name)
                                     self.rocket.set_absolute_position(mouse_pos[0], mouse_pos[1])
                                     self.roaming_parts.remove(self.roaming_parts.sprites()[-1])
+                                    self.rocket.calculate_money()
                             elif ((self.am_i_touching_ui_features(mouse_pos) == False) and (len(self.roaming_parts) > 0)):
                                 # This handles if the part that is being held on the main rocket
                                 if (self.rocket.add_child(self.roaming_parts.sprites()[-1], other_options=(touched_recently == False))):
                                     self.roaming_parts.remove(self.roaming_parts.sprites()[-1])
+                                    self.rocket.calculate_money()
                                 elif (touched_recently == False):
                                     self.roaming_parts.sprites()[-1].being_moved = False
+                                    self.rocket.calculate_money()
                         # If no itemed is not held
                         else:
                             for roam_parts in self.roaming_parts:
@@ -303,6 +309,7 @@ class VAB(BaseLevels):
                                     self.roaming_parts.remove(roam_parts)
                                     self.roaming_parts.add(roam_parts)
                                     self.roaming_parts.sprites()[-1].being_moved = True
+                                    self.rocket.calculate_money()
                                     break
 
 
@@ -311,12 +318,15 @@ class VAB(BaseLevels):
         self.display_surface.blit(self.vab_bg.image, self.vab_bg.rect)
         self.parts_background.draw(self.display_surface)
 
-
         if self.current_menu == 'Launch':
             self.game_state_manager.set_state('level')
 
         self.ui.draw(self.display_surface)
 
+        if self.rocket is not None:
+            self.player.money = self.start_money - self.rocket.calculate_money()
+        else:
+            self.player.money = self.start_money
         self.money_and_symmetry.draw(self.display_surface, mouse_pos, mouse_buttons)
         for button in self.money_and_symmetry.buttons:
             if PygameUtils.check_for_hover(mouse_pos, button.background):
@@ -344,7 +354,12 @@ class VAB(BaseLevels):
                 break
 
         if self.rocket is not None:
+            self.rocket.update_flags()
             self.rocket.draw(self.display_surface)
+            if (self.money_and_symmetry.weight_center.state == 1):
+                self.rocket.draw_weight(self.display_surface)
+            if (self.money_and_symmetry.thrust_center.state == 1):
+                self.rocket.draw_thrust(self.display_surface)
 
     def set_up_button_parts(self):
         # Commander Pods

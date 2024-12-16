@@ -1,4 +1,5 @@
 import time
+from core import *
 
 class PygameUtils:
     @staticmethod
@@ -136,3 +137,71 @@ class PygameUtils:
 
         # If no non-transparent pixel is found, return None
         return None
+
+    @staticmethod
+    def vector_average(vec_1, vec_2):
+        result = Vector3()
+        result.x = (vec_1.x + vec_2.x) / 2.0
+        result.y = (vec_1.y + vec_2.y) / 2.0
+        result.z = (vec_1.z + vec_2.z) / 2.0
+        return result
+
+    @staticmethod
+    def clamp(value, min_value, max_value):
+        return max(min(value, max_value), min_value)
+
+import numpy as np
+
+class PolyInterpolator:
+    def __init__(self, x_values, y_values):
+        self.x_values = np.array(x_values)
+        self.y_values = np.array(y_values)
+
+    def interpolator(self, *coefficients):
+        # For simplicity, using polynomial interpolation using numpy
+        # This could be adjusted depending on the exact nature of PolyInterpolator in the Java code
+        # Returns a 1D polynomial based on coefficients
+        return np.poly1d(coefficients)
+
+    @staticmethod
+    def eval(angle, poly_coefficients):
+        # Evaluates the polynomial at a given angle
+        return np.polyval(poly_coefficients, angle)
+
+from abc import ABC, abstractmethod
+
+# EventObject equivalent class (to hold event data)
+class EventObject:
+    def __init__(self, source):
+        self.source = source  # You can add more attributes depending on what data is needed.
+
+# StateChangeListener equivalent in Python
+class StateChangeListener(ABC):
+    @abstractmethod
+    def state_changed(self, event: EventObject):
+        pass
+
+# ChangeSource class that mimics the Java interface
+class ChangeSource:
+    def __init__(self):
+        self.listeners = []  # A list to store listeners
+
+    def add_change_listener(self, listener: StateChangeListener):
+        """Add a listener to the list"""
+        if listener not in self.listeners:
+            self.listeners.append(listener)
+
+    def remove_change_listener(self, listener: StateChangeListener):
+        """Remove a listener from the list"""
+        if listener in self.listeners:
+            self.listeners.remove(listener)
+
+    def notify_change(self, event: EventObject):
+        """Notify all listeners of the state change"""
+        for listener in self.listeners:
+            listener.state_changed(event)
+
+# Implementing a listener class
+class ConcreteListener(StateChangeListener):
+    def state_changed(self, event: EventObject):
+        print(f"State changed! Event source: {event.source}")

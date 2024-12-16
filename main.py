@@ -28,7 +28,7 @@ class SoftwareRender:
         }
 
         self.start_time = pygame.time.get_ticks()
-        self.player = PlayerProfile()
+        self.player = PlayerProfile(money=100000)
 
         self.gameStateManager = GameStateManager('start')
         self.start = Start(self.screen, self.gameStateManager, self.system_info)

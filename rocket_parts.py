@@ -25,6 +25,97 @@ class RocketNode(pygame.sprite.Sprite):
         # Variables
         self.being_moved = True
         self.STICKY_DISTANCE = 50
+        self.descendants_num = 0
+        self.center_of_mass = (0.0, 0.0)
+        self.center_of_thrust = (None, None)
+
+    def calculate_total_mass(self):
+        mass = float(self.data['mass'])
+        for child in self.children:
+            mass += child.calculate_total_mass()
+        return mass
+
+    def calculate_total_thrust(self):
+        thrust = None
+        if self.type == "engine":
+            thrust = float(self.data["Thrust (ASL)"])
+        for child in self.children:
+            thrust_child = child.calculate_total_thrust()
+            if (thrust_child is not None) and (thrust is not None):
+                thrust += thrust_child
+            elif (thrust_child is not None):
+                thrust = thrust_child
+        return thrust
+
+    def calculate_delta_mass_wrt_CoM(self):
+        edge = self.non_transparent_edges()
+        center_x = (edge['left'] + edge['right']) / 2.0
+        center_y = (edge['top'] + edge['bottom']) / 2.0
+        dx_mass = float(self.data['mass']) * center_x
+        dy_mass = float(self.data['mass']) * center_y
+        for child in self.children:
+            dx_child, dy_child = child.calculate_delta_mass_wrt_CoM()
+            dx_mass += dx_child
+            dy_mass += dy_child
+        return dx_mass, dy_mass
+
+    def calculate_delta_thrust_wrt_CoT(self):
+        dx_thrust = None
+        dy_thrust = None
+        if self.type == "engine":
+            edge = self.non_transparent_edges()
+            center_x = (edge['left'] + edge['right']) / 2.0
+            bottom = edge['bottom']
+            dx_thrust = float(self.data["Thrust (ASL)"]) * center_x
+            dy_thrust = float(self.data["Thrust (ASL)"]) * bottom
+        for child in self.children:
+            dx_child, dy_child = child.calculate_delta_thrust_wrt_CoT()
+            # Not checking dy because dx and dy should be populated with non None at
+            # the same time
+            if (dx_child is not None) and (dx_thrust is not None):
+                dx_thrust += dx_child
+                dy_thrust += dy_child
+            elif (dx_child is not None):
+                dx_thrust = dx_child
+                dy_thrust = dy_child
+
+        if (dx_thrust is not None) and (dy_thrust is None):
+            raise ValueError("X and Y Thrust should be either None or not at the same time")
+        elif (dy_thrust is not None) and (dx_thrust is None):
+            raise ValueError("X and Y Thrust should be either None or not at the same time")
+
+        return dx_thrust, dy_thrust
+
+    def calculate_center_of_mass(self):
+        total_mass = self.calculate_total_mass()
+        dx_mass, dy_mass = self.calculate_delta_mass_wrt_CoM()
+        cg_x = dx_mass / total_mass
+        cg_y = dy_mass / total_mass
+        return cg_x, cg_y
+
+    def calculate_center_of_thrust(self):
+        total_thrust = self.calculate_total_thrust()
+        dx_thrust, dy_thrust = self.calculate_delta_thrust_wrt_CoT()
+        if (total_thrust is None) or (dx_thrust is None) or (dy_thrust is None):
+            return None, None
+        ct_x = dx_thrust / total_thrust
+        ct_y = dy_thrust / total_thrust
+        return ct_x, ct_y
+
+    def draw_weight(self, display_surface, color="#fcea00", radius=2):
+        pygame.draw.circle(display_surface, "#0F0E0E", self.center_of_mass, radius+1)
+        pygame.draw.circle(display_surface, color, self.center_of_mass, radius)
+
+    def draw_thrust(self, display_surface, color="#fa8000", radius=2):
+        if (self.center_of_thrust[0] is not None) and (self.center_of_thrust[1] is not None):
+            pygame.draw.circle(display_surface, "#0F0E0E", self.center_of_thrust, radius+1)
+            pygame.draw.circle(display_surface, color, self.center_of_thrust, radius)
+
+    def calculate_money(self):
+        cost = float(self.data['Cost'])
+        for child in self.children:
+            cost += child.calculate_money()
+        return cost
 
     def clear_stick_type(self):
         self.stick_type = {
@@ -149,6 +240,14 @@ class RocketNode(pygame.sprite.Sprite):
             self.rect.centerx += relative_x
         for child in self.children:
             child.set_relative_position(relative_x, relative_y, relative=relative)
+
+    def update_flags(self):
+        # Used to reduced lag
+        if (self.descendants_num != self.count_all_descendants()):
+            self.center_of_mass = self.calculate_center_of_mass()
+            self.center_of_thrust = self.calculate_center_of_thrust()
+            self.descendants_num = self.count_all_descendants()
+        return
 
     def update(self, mouse_position):
         if self.being_moved:

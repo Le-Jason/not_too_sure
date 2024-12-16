@@ -301,6 +301,10 @@ class TextBox():
         self.rect.topleft = (x, y)
         self.rect = self.surface.get_rect(topleft=self.rect.topleft)
 
+    def set_position_top_right(self, x, y):
+        self.rect.topright = (x, y)
+        self.rect = self.surface.get_rect(topright=self.rect.topright)
+
     def set_position(self, x, y):
         self.rect.center = (x, y)
         self.rect = self.surface.get_rect(center=self.rect.center)

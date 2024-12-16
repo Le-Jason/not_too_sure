@@ -353,7 +353,7 @@ class MoneySymmetryMenu():
         self.thrust_center.set_position(0, info.current_h, loc='bottomleft')
         self.aero_center.set_position(0, info.current_h, loc='bottomleft')
         self.symmetry.set_position(0, info.current_h, loc='bottomleft')
-        self.money_counter.set_position_top_left(45, 655)
+        self.money_counter.set_position_top_right(195, 655)
         self.buttons = [self.weight_center, self.thrust_center,
                         self.aero_center]
 
@@ -385,7 +385,8 @@ class MoneySymmetryMenu():
         else:
             self.symmetry.set_background_state('low')
         self.symmetry.draw(display_surface, mouse_position)
-        self.money_counter.update_text(f"{self.player.money}")
+        self.money_counter.update_text(f"{int(self.player.money)}")
+        self.money_counter.set_position_top_right(195, 655)
         self.money_counter.draw(display_surface)
 
 class SideCategoryButton(VABButton):
